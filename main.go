@@ -66,9 +66,14 @@ func main() {
 	if goPath == "" {
 		goPath = build.Default.GOPATH
 	}
-	//binaryPath := fmt.Sprintf("%s%s", goPath, "/src/github.com/ava-labs/avalanchego/build")
+
 	binaryPath := "/tmp/e2e-test/avalanchego"
-	if err := run(log, binaryPath); err != nil {
+	workDir := "/tmp/e2e-test/nodes"
+
+	os.RemoveAll(workDir)
+	os.MkdirAll(workDir, 0777)
+
+	if err := run(log, binaryPath, workDir); err != nil {
 		log.Fatal("fatal error", zap.Error(err))
 		os.Exit(1)
 	}
@@ -114,10 +119,14 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func run(log logging.Logger, binaryPath string) error {
+func run(log logging.Logger, binaryPath string, workDir string) error {
 	// Create the network
+	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath))
+	if err != nil {
+		return err
+	}
 
-	nw, err := local.NewDefaultNetwork(log, fmt.Sprintf("%s/avalanchego", binaryPath), true, false, true)
+	nw, err := local.NewNetwork(log, nwConfig, workDir, "", true, false, true)
 	if err != nil {
 		return err
 	}
@@ -184,6 +193,14 @@ func run(log logging.Logger, binaryPath string) error {
 	if err := await(nw, log, healthyTimeout); err != nil {
 		return err
 	}
+
+	log.Info(
+		"chain api url",
+		zap.String(
+			"url",
+			fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0]),
+		),
+	)
 
 	log.Info("Network will run until you CTRL + C to exit...")
 	// Wait until done shutting down network after SIGINT/SIGTERM
