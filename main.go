@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/build"
 	"io"
+	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,11 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/network"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/coreth/accounts/abi/bind"
+	"github.com/ava-labs/coreth/core/types"
+	"github.com/ava-labs/coreth/ethclient"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/zap"
 )
 
@@ -120,6 +126,57 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
+func doFirtsTx(log logging.Logger, urls []string) error {
+	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	if err != nil {
+		return err
+	}
+	addr := crypto.PubkeyToAddress(pkey.PublicKey)
+
+	client, err := ethclient.Dial(urls[0])
+	if err != nil {
+		return err
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return err
+	}
+
+	nonce, err := client.NonceAt(context.Background(), addr, nil)
+	if err != nil {
+		return err
+	}
+
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+
+	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+	value := big.NewInt(1000000000000000000)
+	tx := types.NewTransaction(nonce, toAddress, value, 21000, gasPrice, nil)
+
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), pkey)
+	if err != nil {
+		return err
+	}
+
+	log.Info("firts transaction hash", zap.String("hash", signedTx.Hash().Hex()))
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return err
+	}
+
+	receipt, err := bind.WaitMined(context.Background(), client, signedTx)
+	if err != nil {
+		return err
+	}
+	log.Info("firts transaction mined", zap.String("hash", receipt.TxHash.Hex()))
+
+	return nil
+}
+
 func run(log logging.Logger, binaryPath string, workDir string) error {
 	// Create the network
 	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath))
@@ -198,6 +255,10 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 		}
 		rpcUrls[i] = fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0])
 		log.Info("subnet rpc url", zap.String("node", nodeNames[i]), zap.String("url", rpcUrls[i]))
+	}
+
+	if err := doFirtsTx(log, rpcUrls); err != nil {
+		return err
 	}
 
 	log.Info("Network will run until you CTRL + C to exit...")
