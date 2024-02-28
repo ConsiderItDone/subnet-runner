@@ -112,6 +112,7 @@ func copy(src, dst string) (int64, error) {
 		return 0, err
 	}
 	defer destination.Close()
+
 	nBytes, err := io.Copy(destination, source)
 	if err := os.Chmod(dst, 0777); err != nil {
 		return 0, err
@@ -151,27 +152,23 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	}
 
 	// Add some chain
-	subnets, err := nw.CreateSubnets(context.Background(), []network.SubnetSpec{
-		{
-			SubnetConfig: nil,
-			Participants: []string{"node6"},
-		},
-	})
-	if err != nil {
-		return nil
-	}
-	node, err := nw.GetNode("node6")
-	if err != nil {
-		return nil
-	}
-	_, err = copy(
-		fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", binaryPath),
-		fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", node.GetDataDir()),
-	)
+	nodeNames, err := nw.GetNodeNames()
 	if err != nil {
 		return err
 	}
-	log.Info("subnets created", zap.Any("ids", subnets))
+
+	for i := range nodeNames {
+		node, err := nw.GetNode(nodeNames[i])
+		if err != nil {
+			return err
+		}
+		if _, err := copy(
+			fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", binaryPath),
+			fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", node.GetDataDir()),
+		); err != nil {
+			return err
+		}
+	}
 
 	chains, err := nw.CreateBlockchains(context.Background(), []network.BlockchainSpec{
 		network.BlockchainSpec{
@@ -180,27 +177,28 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 			ChainConfig: []byte(`{"warp-api-enabled": true}`),
 			SubnetSpec: &network.SubnetSpec{
 				SubnetConfig: nil,
-				Participants: []string{"node6"},
+				Participants: nodeNames,
 			},
 		},
 	})
 	if err != nil {
 		return err
 	}
-	log.Info("chains created", zap.Any("ids", chains))
 
 	// Wait until the nodes in the network are ready
 	if err := await(nw, log, healthyTimeout); err != nil {
 		return err
 	}
 
-	log.Info(
-		"chain api url",
-		zap.String(
-			"url",
-			fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0]),
-		),
-	)
+	rpcUrls := make([]string, len(nodeNames))
+	for i := range nodeNames {
+		node, err := nw.GetNode(nodeNames[i])
+		if err != nil {
+			return err
+		}
+		rpcUrls[i] = fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0])
+		log.Info("subnet rpc url", zap.String("node", nodeNames[i]), zap.String("url", rpcUrls[i]))
+	}
 
 	log.Info("Network will run until you CTRL + C to exit...")
 	// Wait until done shutting down network after SIGINT/SIGTERM
