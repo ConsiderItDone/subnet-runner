@@ -184,6 +184,8 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 		return err
 	}
 
+	nwConfig.Flags["log-level"] = "INFO"
+
 	nw, err := local.NewNetwork(log, nwConfig, workDir, "", true, false, true)
 	if err != nil {
 		return err
@@ -228,7 +230,7 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	}
 
 	chains, err := nw.CreateBlockchains(context.Background(), []network.BlockchainSpec{
-		network.BlockchainSpec{
+		{
 			VMName:      "subnetevm",
 			Genesis:     genesis,
 			ChainConfig: []byte(`{"warp-api-enabled": true}`),
