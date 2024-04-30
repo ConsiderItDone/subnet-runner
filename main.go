@@ -126,7 +126,7 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-func doFirtsTx(log logging.Logger, urls []string) error {
+func doTx(log logging.Logger, urls []string) error {
 	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func doFirtsTx(log logging.Logger, urls []string) error {
 		return err
 	}
 
-	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+	toAddress := common.HexToAddress("0xAB259A4830E2C7AA6EF3831BAC1590F855AE4C32")
 	value := big.NewInt(1000000000000000000)
 	tx := types.NewTransaction(nonce, toAddress, value, 21000, gasPrice, nil)
 
@@ -162,7 +162,7 @@ func doFirtsTx(log logging.Logger, urls []string) error {
 		return err
 	}
 
-	log.Info("firts transaction hash", zap.String("hash", signedTx.Hash().Hex()))
+	log.Info("transaction hash", zap.String("hash", signedTx.Hash().Hex()))
 	err = client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		return err
@@ -172,7 +172,10 @@ func doFirtsTx(log logging.Logger, urls []string) error {
 	if err != nil {
 		return err
 	}
-	log.Info("firts transaction mined", zap.String("hash", receipt.TxHash.Hex()))
+	log.Info("transaction mined",
+		zap.String("hash", receipt.TxHash.Hex()),
+		zap.String("block", receipt.BlockNumber.String()),
+	)
 
 	return nil
 }
@@ -259,12 +262,19 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 		log.Info("subnet rpc url", zap.String("node", nodeNames[i]), zap.String("url", rpcUrls[i]))
 	}
 
-	if err := doFirtsTx(log, rpcUrls); err != nil {
-		return err
+	log.Info("Network will run until you CTRL + C to exit...")
+
+	for {
+		time.Sleep(5 * time.Second)
+		select {
+		case <-closedOnShutdownCh:
+			return nil
+		case <-time.After(5 * time.Second):
+			if err := doTx(log, rpcUrls); err != nil {
+				return err
+			}
+		}
 	}
 
-	log.Info("Network will run until you CTRL + C to exit...")
-	// Wait until done shutting down network after SIGINT/SIGTERM
-	<-closedOnShutdownCh
 	return nil
 }
