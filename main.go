@@ -15,12 +15,15 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/network"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/coreth/accounts/abi/bind"
-	"github.com/ava-labs/coreth/core/types"
-	"github.com/ava-labs/coreth/ethclient"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"go.uber.org/zap"
+
+	"subnet-runner/contracts/ics20/ics20bank"
+	"subnet-runner/contracts/ics20/ics20transferer"
 )
 
 const (
@@ -29,6 +32,8 @@ const (
 
 var (
 	goPath = os.ExpandEnv("$GOPATH")
+
+	ibcAddr = common.HexToAddress("0x0300000000000000000000000000000000000002")
 
 	//go:embed data/genesis.json
 	genesis []byte
@@ -124,6 +129,92 @@ func copy(src, dst string) (int64, error) {
 		return 0, err
 	}
 	return nBytes, err
+}
+
+func doICS20(log logging.Logger, urls []string) error {
+	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	if err != nil {
+		return err
+	}
+
+	client, err := ethclient.Dial(urls[0])
+	if err != nil {
+		return err
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return err
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return err
+	}
+
+	_, ics20bankTx, ics20bank, err := ics20bank.DeployICS20Bank(auth, client)
+	if err != nil {
+		return err
+	}
+
+	ics20bankAddr, err := bind.WaitDeployed(context.Background(), client, ics20bankTx)
+	if err != nil {
+		return err
+	}
+	log.Info("ICS20 Bank delpoyed", zap.String("address", ics20bankAddr.Hex()))
+
+	_, ics20transfererTx, ics20transferer, err := ics20transferer.DeployICS20Transferer(auth, client, ibcAddr, ics20bankAddr)
+	if err != nil {
+		return err
+	}
+
+	ics20transfererAddr, err := bind.WaitDeployed(context.Background(), client, ics20transfererTx)
+	if err != nil {
+		return err
+	}
+	log.Info("ICS20 Transferer delpoyed", zap.String("address", ics20transfererAddr.Hex()))
+
+	setOperTx1, err := ics20bank.SetOperator(auth, auth.From)
+	if err != nil {
+		return err
+	}
+	setOperRe1, err := bind.WaitMined(context.Background(), client, setOperTx1)
+	if err != nil {
+		return err
+	}
+	log.Info("SetOperator key address", zap.String("hash", setOperRe1.TxHash.Hex()), zap.String("block", setOperRe1.BlockNumber.String()))
+
+	setOperTx2, err := ics20bank.SetOperator(auth, ibcAddr)
+	if err != nil {
+		return err
+	}
+	setOperRe2, err := bind.WaitMined(context.Background(), client, setOperTx2)
+	if err != nil {
+		return err
+	}
+	log.Info("SetOperator ibc address", zap.String("hash", setOperRe2.TxHash.Hex()), zap.String("block", setOperRe2.BlockNumber.String()))
+
+	setOperTx3, err := ics20bank.SetOperator(auth, ics20transfererAddr)
+	if err != nil {
+		return err
+	}
+	setOperRe3, err := bind.WaitMined(context.Background(), client, setOperTx3)
+	if err != nil {
+		return err
+	}
+	log.Info("SetOperator ics20 transferer address", zap.String("hash", setOperRe3.TxHash.Hex()), zap.String("block", setOperRe3.BlockNumber.String()))
+
+	bintPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
+	if err != nil {
+		return err
+	}
+	bintPortRe, err := bind.WaitMined(context.Background(), client, bintPortTx)
+	if err != nil {
+		return err
+	}
+	log.Info("ics20transferer.BindPort", zap.String("addr", ibcAddr.Hex()), zap.String("port", "transfer"), zap.String("block", bintPortRe.BlockNumber.String()))
+
+	return nil
 }
 
 func doTx(log logging.Logger, urls []string) error {
@@ -263,6 +354,11 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	}
 
 	log.Info("Network will run until you CTRL + C to exit...")
+
+	if err := doICS20(log, rpcUrls); err != nil {
+		log.Error("can't deploy ICS20", zap.Error(err))
+		return err
+	}
 
 	for {
 		time.Sleep(5 * time.Second)
