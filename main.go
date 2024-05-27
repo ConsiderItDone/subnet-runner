@@ -204,6 +204,16 @@ func doICS20(log logging.Logger, urls []string) error {
 	}
 	log.Info("SetOperator ics20 transferer address", zap.String("hash", setOperRe3.TxHash.Hex()), zap.String("block", setOperRe3.BlockNumber.String()))
 
+	setChannelEscrowAddressesTx, err := ics20transferer.SetChannelEscrowAddresses(auth, "transfer", auth.From)
+	if err != nil {
+		return err
+	}
+	setChannelEscrowAddressesRe, err := bind.WaitMined(context.Background(), client, setChannelEscrowAddressesTx)
+	if err != nil {
+		return err
+	}
+	log.Info("ics20transferer.SetChannelEscrowAddresses", zap.String("addr", auth.From.Hex()), zap.String("port", "transfer"), zap.String("block", setChannelEscrowAddressesRe.BlockNumber.String()))
+
 	bintPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
 	if err != nil {
 		return err
