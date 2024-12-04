@@ -24,6 +24,7 @@ import (
 
 	"subnet-runner/contracts/ics20/ics20bank"
 	"subnet-runner/contracts/ics20/ics20transferer"
+	"subnet-runner/internal"
 )
 
 const (
@@ -214,11 +215,11 @@ func doICS20(log logging.Logger, urls []string) error {
 	}
 	log.Info("ics20transferer.SetChannelEscrowAddresses", zap.String("addr", auth.From.Hex()), zap.String("port", "transfer"), zap.String("block", setChannelEscrowAddressesRe.BlockNumber.String()))
 
-	bintPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
+	bindPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
 	if err != nil {
 		return err
 	}
-	bintPortRe, err := bind.WaitMined(context.Background(), client, bintPortTx)
+	bintPortRe, err := bind.WaitMined(context.Background(), client, bindPortTx)
 	if err != nil {
 		return err
 	}
@@ -365,7 +366,7 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 
 	log.Info("Network will run until you CTRL + C to exit...")
 
-	if err := doICS20(log, rpcUrls); err != nil {
+	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
 		log.Error("can't deploy ICS20", zap.Error(err))
 		return err
 	}
@@ -381,6 +382,4 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 			}
 		}
 	}
-
-	return nil
 }

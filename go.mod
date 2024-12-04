@@ -5,6 +5,7 @@ go 1.21.3
 require (
 	github.com/ava-labs/avalanche-network-runner v1.7.6
 	github.com/ava-labs/avalanchego v1.11.1
+	github.com/ava-labs/subnet-evm v0.6.1
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/urfave/cli v1.22.15
 	go.uber.org/zap v1.27.0
@@ -122,7 +123,7 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
+	golang.org/x/time v0.1.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
