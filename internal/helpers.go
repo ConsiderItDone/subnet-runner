@@ -34,7 +34,6 @@ func deployTeleporter(
 	opts *bind.TransactOpts,
 	pkey *ecdsa.PrivateKey,
 	chainID *big.Int,
-	mockRegistry bool,
 ) (common.Address, common.Address, error) {
 	// Roughly 3,010,000 gas needed to deploy contract. Padded to account for possible additions
 	const defaultContractCreationGasLimit = uint64(4000000)
@@ -115,9 +114,7 @@ func deployTeleporter(
 	if err != nil {
 		return common.Address{}, common.Address{}, fmt.Errorf("failed to wait for teleporterMessenger transaction mining: %w", err)
 	}
-	log.Info("Deployed teleporterMessenger", zap.String("txHash", receipt.TxHash.Hex()))
 
-	log.Info("TeleporterMessenger Universal Contract Address", zap.String("address", tpContractAddress.Hex()))
 	teleporterCode, err := client.CodeAt(ctx, tpContractAddress, nil)
 	if err != nil {
 		return common.Address{}, common.Address{}, fmt.Errorf("failed to get code at contract address: %w", err)
@@ -134,10 +131,6 @@ func deployTeleporter(
 	tpRegistryAddress := common.Address{}
 
 	// Deploy the TeleporterRegistry contract
-	if mockRegistry {
-		return tpContractAddress, tpRegistryAddress, nil
-	}
-
 	initialEntries := []teleporterregistry.ProtocolRegistryEntry{
 		{
 			Version:         big.NewInt(1),
@@ -156,7 +149,7 @@ func deployTeleporter(
 	}
 
 	log.Info(
-		"Deployed TeleporterRegistry contract at address: %s, tx hash: %s",
+		"Deployed TeleporterRegistry contract",
 		zap.String("address", tpRegistryAddress.Hex()),
 		zap.String("txHash", receipt.TxHash.Hex()),
 	)
@@ -246,7 +239,38 @@ func WaitMinedTxHash(ctx context.Context, b bind.DeployBackend, txHash common.Ha
 func parseBaseURL(rawURL string) (string, error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing URL: %s", err)
+		return "", fmt.Errorf("error parsing URL: %s", err)
 	}
 	return fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host), nil
+}
+
+// initializeClientAndAuth initializes an ethclient.Client, bind.TransactOpts, and rpc.Client.
+func initializeClientAndAuth(url string, ctx context.Context, pkey *ecdsa.PrivateKey) (
+	ethclient.Client,
+	*big.Int,
+	*bind.TransactOpts,
+	*rpc.Client,
+	error,
+) {
+	client, err := ethclient.Dial(url)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to connect to network: %w", err)
+	}
+
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	rpcClient, err := rpc.DialContext(ctx, url)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to dial RPC client: %v", err)
+	}
+
+	return client, chainID, auth, rpcClient, nil
 }
