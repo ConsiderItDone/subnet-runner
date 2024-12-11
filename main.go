@@ -29,6 +29,7 @@ import (
 
 const (
 	healthyTimeout = 2 * time.Minute
+	pk             = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 )
 
 var (
@@ -284,14 +285,24 @@ func doTx(log logging.Logger, urls []string) error {
 
 func run(log logging.Logger, binaryPath string, workDir string) error {
 	// Create the network
-	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath))
+	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath), 99999)
 	if err != nil {
 		return err
 	}
 
 	nwConfig.Flags["log-level"] = "INFO"
 
-	nw, err := local.NewNetwork(log, nwConfig, workDir, "", true, false, true)
+	nw, err := local.NewNetwork(
+		log,
+		nwConfig,
+		workDir,
+		"",
+		workDir,
+		true,
+		false,
+		true,
+		pk,
+	)
 	if err != nil {
 		return err
 	}
@@ -366,8 +377,12 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 
 	log.Info("Network will run until you CTRL + C to exit...")
 
-	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
-		log.Error("can't deploy ICS20", zap.Error(err))
+	if err := internal.DeploySubnetContracts(
+		log,
+		rpcUrls,
+		ibcAddr,
+	); err != nil {
+		log.Error("DeploySubnetContracts", zap.Error(err))
 		return err
 	}
 
