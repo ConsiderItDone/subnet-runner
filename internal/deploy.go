@@ -153,11 +153,11 @@ func DeploySubnetContracts(
 	_, homeTokenTx, _, err := erc20tokenhome.DeployERC20TokenHome(
 		authC,
 		clientC,
-		tpRegistryAddressC, // teleporter registry address
-		authC.From,         // teleporter manager
-		big.NewInt(1),      // min teleporter version
-		tokenAddr,          // token address
-		18,                 // token decimals
+		tpRegistryAddressC,  // teleporter registry address
+		tpMessengerAddressC, // teleporter manager
+		big.NewInt(1),       // min teleporter version
+		tokenAddr,           // token address
+		18,                  // token decimals
 	)
 	if err != nil {
 		return fmt.Errorf("failed to deploy ERC20TokenHome: %w", err)
@@ -191,7 +191,7 @@ func DeploySubnetContracts(
 
 	settings := erc20tokenremoteupgradeable.TokenRemoteSettings{
 		TeleporterRegistryAddress: tpRegistryAddressLnd,
-		TeleporterManager:         authLnd.From,
+		TeleporterManager:         tpMessengerAddressLnd,
 		MinTeleporterVersion:      big.NewInt(1),
 		TokenHomeBlockchainID:     tokenHomeBlockchainID, // C-chain's chainID as bytes32
 		TokenHomeAddress:          homeAddr,
