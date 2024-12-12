@@ -1,0 +1,113 @@
+{
+  "log-level": "info",
+  "storage-location": "/Users/vn/.avalanche-cli/runs/LocalNetwork/local-relayer/awm-relayer-storage",
+  "redis-url": "",
+  "api-port": 0,
+  "metrics-port": 9091,
+  "p-chain-api": {
+    "base-url": "http://127.0.0.1:9650",
+    "query-parameters": {},
+    "http-headers": null
+  },
+  "info-api": {
+    "base-url": "http://127.0.0.1:9650",
+    "query-parameters": {},
+    "http-headers": null
+  },
+  "source-blockchains": [
+    {
+      "subnet-id": "11111111111111111111111111111111LpoYY",
+      "blockchain-id": "2RFbVk6YuSBdpTB73qXPGkwNXmKSaK7tPLDqyY9Y3SHLRAFPGE",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/2RFbVk6YuSBdpTB73qXPGkwNXmKSaK7tPLDqyY9Y3SHLRAFPGE/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "ws-endpoint": {
+        "base-url": "ws://127.0.0.1:9650/ext/bc/2RFbVk6YuSBdpTB73qXPGkwNXmKSaK7tPLDqyY9Y3SHLRAFPGE/ws",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "message-contracts": {
+        "0x0000000000000000000000000000000000000000": {
+          "message-format": "off-chain-registry",
+          "settings": {
+            "teleporter-registry-address": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25"
+          }
+        },
+        "0x1411Cc804d13231Ce66217Eb296a09d3C10ce785": {
+          "message-format": "teleporter",
+          "settings": {
+            "reward-address": "0xcD5b19462E745DDAf97a60b99563a2f8206c9E61"
+          }
+        }
+      },
+      "supported-destinations": null,
+      "process-historical-blocks-from-height": 0,
+      "allowed-origin-sender-addresses": null
+    },
+    {
+      "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
+      "blockchain-id": "23KbyTesa5D8V9x1VVQkNNmdDReZRYPMRgeNS3519v3yBeVrgU",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/23KbyTesa5D8V9x1VVQkNNmdDReZRYPMRgeNS3519v3yBeVrgU/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "ws-endpoint": {
+        "base-url": "ws://127.0.0.1:9650/ext/bc/23KbyTesa5D8V9x1VVQkNNmdDReZRYPMRgeNS3519v3yBeVrgU/ws",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "message-contracts": {
+        "0x0000000000000000000000000000000000000000": {
+          "message-format": "off-chain-registry",
+          "settings": {
+            "teleporter-registry-address": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25"
+          }
+        },
+        "0x1411Cc804d13231Ce66217Eb296a09d3C10ce785": {
+          "message-format": "teleporter",
+          "settings": {
+            "reward-address": "0xcD5b19462E745DDAf97a60b99563a2f8206c9E61"
+          }
+        }
+      },
+      "supported-destinations": null,
+      "process-historical-blocks-from-height": 0,
+      "allowed-origin-sender-addresses": null
+    }
+  ],
+  "destination-blockchains": [
+    {
+      "subnet-id": "11111111111111111111111111111111LpoYY",
+      "blockchain-id": "2RFbVk6YuSBdpTB73qXPGkwNXmKSaK7tPLDqyY9Y3SHLRAFPGE",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/2RFbVk6YuSBdpTB73qXPGkwNXmKSaK7tPLDqyY9Y3SHLRAFPGE/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "kms-key-id": "",
+      "kms-aws-region": "",
+      "account-private-key": "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+    },
+    {
+      "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
+      "blockchain-id": "23KbyTesa5D8V9x1VVQkNNmdDReZRYPMRgeNS3519v3yBeVrgU",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/23KbyTesa5D8V9x1VVQkNNmdDReZRYPMRgeNS3519v3yBeVrgU/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "kms-key-id": "",
+      "kms-aws-region": "",
+      "account-private-key": "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+    }
+  ],
+  "process-missed-blocks": false,
+  "manual-warp-messages": null
+}

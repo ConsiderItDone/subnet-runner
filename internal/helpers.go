@@ -21,6 +21,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"go.uber.org/zap"
 
+	receiveronsubnet "subnet-runner/abi-bindings/go/ictt/ReceiverOnSubnet"
+	senderonsubnet "subnet-runner/abi-bindings/go/ictt/SenderOnSubnet"
 	teleportermessenger "subnet-runner/abi-bindings/go/teleporter/TeleporterMessenger"
 	teleporterregistry "subnet-runner/abi-bindings/go/teleporter/registry/TeleporterRegistry"
 )
@@ -273,4 +275,30 @@ func initializeClientAndAuth(url string, ctx context.Context, pkey *ecdsa.Privat
 	}
 
 	return client, chainID, auth, rpcClient, nil
+}
+
+// deployTestReceiver deploys a ReceiverOnSubnet contract.
+func deployTestReceiver(ctx context.Context, auth *bind.TransactOpts, client ethclient.Client) (common.Address, error) {
+	_, receiverTx, _, err := receiveronsubnet.DeployReceiverOnSubnet(auth, client)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to deploy ReceiverOnSubnet: %w", err)
+	}
+	receiverAddr, err := bind.WaitDeployed(ctx, client, receiverTx)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed waiting for ReceiverOnSubnet deployment: %w", err)
+	}
+	return receiverAddr, nil
+}
+
+// deployTestSender deploys a SenderOnSubnet contract.
+func deployTestSender(ctx context.Context, auth *bind.TransactOpts, client ethclient.Client) (common.Address, error) {
+	_, receiverTx, _, err := senderonsubnet.DeploySenderOnSubnet(auth, client)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to deploy SenderOnSubnet: %w", err)
+	}
+	addr, err := bind.WaitDeployed(ctx, client, receiverTx)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed waiting for SenderOnSubnet deployment: %w", err)
+	}
+	return addr, nil
 }

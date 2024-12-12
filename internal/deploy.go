@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/common"
@@ -29,6 +31,20 @@ func DeploySubnetContracts(
 ) error {
 	ctx := context.Background()
 
+	// Connect to the Avalanche node
+	client := platformvm.NewClient("http://localhost:9650")
+
+	// Get the list of blockchains
+	blockchains, err := client.GetBlockchains(context.Background())
+	if err != nil {
+		fmt.Errorf("failed to get blockchains: %w", err)
+	}
+
+	// Print the transaction IDs
+	for _, blockchain := range blockchains {
+		fmt.Printf("Blockchain ID: %s, SubnetID: %s, Name: %s\n", blockchain.ID.Hex(), blockchain.SubnetID, blockchain.Name)
+	}
+
 	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
@@ -38,6 +54,9 @@ func DeploySubnetContracts(
 		return err
 	}
 	defer rpcClientLnd.Close()
+
+	// deployer address
+	log.Info("Deployer address", zap.String("address", authLnd.From.Hex()))
 
 	// Deploy teleporterMessenger contract
 	tpMessengerAddressLnd, tpRegistryAddressLnd, err := deployTeleporter(ctx, log, clientLnd, rpcClientLnd, authLnd, pkey, chainIDLnd)
@@ -117,6 +136,11 @@ func DeploySubnetContracts(
 		return err
 	}
 	CChainURL := baseURL + "/ext/bc/C/rpc"
+	cChainBlockchainID, err := info.NewClient(baseURL).GetBlockchainID(ctx, "C")
+	if err != nil {
+		return fmt.Errorf("failed to get C-chain blockchain ID: %w", err)
+	}
+	log.Info("C-chain blockchain ID", zap.String("id", cChainBlockchainID.String()))
 
 	clientC, chainIDC, authC, rpcClientC, err := initializeClientAndAuth(CChainURL, ctx, pkey)
 	if err != nil {
@@ -266,6 +290,20 @@ func DeploySubnetContracts(
 	if err := setupTokenRouter(ctx, &clientLnd, authLnd, tokenRouter, tokenAddr, homeAddr, remoteTokenAddr, log); err != nil {
 		return fmt.Errorf("failed to setup token router: %w", err)
 	}
+
+	// Deploy ReceiverOnSubnet contract
+	receiverAddr, err := deployTestReceiver(ctx, authC, clientC)
+	if err != nil {
+		return err
+	}
+	log.Info("ReceiverOnSubnet С deployed", zap.String("address", receiverAddr.Hex()))
+
+	// Deploy ReceiverOnSubnet contract
+	senderAddr, err := deployTestSender(ctx, authLnd, clientLnd)
+	if err != nil {
+		return err
+	}
+	log.Info("SenderOnSubnet LND deployed", zap.String("address", senderAddr.Hex()))
 
 	return nil
 }
