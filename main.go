@@ -134,7 +134,7 @@ func copy(src, dst string) (int64, error) {
 }
 
 func doICS20(log logging.Logger, urls []string) error {
-	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func doICS20(log logging.Logger, urls []string) error {
 }
 
 func doTx(log logging.Logger, urls []string) error {
-	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return err
 	}
