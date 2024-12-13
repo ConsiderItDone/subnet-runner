@@ -377,11 +377,7 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 
 	log.Info("Network will run until you CTRL + C to exit...")
 
-	if err := internal.DeploySubnetContracts(
-		log,
-		rpcUrls,
-		ibcAddr,
-	); err != nil {
+	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
 		log.Error("DeploySubnetContracts", zap.Error(err))
 		return err
 	}

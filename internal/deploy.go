@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,8 +20,11 @@ import (
 	erc20tokenremoteupgradeable "subnet-runner/abi-bindings/go/ictt/TokenRemote/ERC20TokenRemoteUpgradeable"
 )
 
-const pk = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+const (
+	pk = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+)
 
+// DeploySubnetContracts deploys contracts to the subnet and C-chain and sets up the relayer config
 func DeploySubnetContracts(
 	log logging.Logger,
 	urls []string,
@@ -31,32 +32,21 @@ func DeploySubnetContracts(
 ) error {
 	ctx := context.Background()
 
-	// Connect to the Avalanche node
-	client := platformvm.NewClient("http://localhost:9650")
-
-	// Get the list of blockchains
-	blockchains, err := client.GetBlockchains(context.Background())
+	baseURL, err := parseBaseURL(urls[0])
 	if err != nil {
-		fmt.Errorf("failed to get blockchains: %w", err)
-	}
-
-	// Print the transaction IDs
-	for _, blockchain := range blockchains {
-		fmt.Printf("Blockchain ID: %s, SubnetID: %s, Name: %s\n", blockchain.ID.Hex(), blockchain.SubnetID, blockchain.Name)
+		return err
 	}
 
 	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
+
 	clientLnd, chainIDLnd, authLnd, rpcClientLnd, err := initializeClientAndAuth(urls[0], ctx, pkey)
 	if err != nil {
 		return err
 	}
 	defer rpcClientLnd.Close()
-
-	// deployer address
-	log.Info("Deployer address", zap.String("address", authLnd.From.Hex()))
 
 	// Deploy teleporterMessenger contract
 	tpMessengerAddressLnd, tpRegistryAddressLnd, err := deployTeleporter(ctx, log, clientLnd, rpcClientLnd, authLnd, pkey, chainIDLnd)
@@ -65,7 +55,7 @@ func DeploySubnetContracts(
 	}
 	log.Info("Teleporter contracts deployed", zap.String("messenger", tpMessengerAddressLnd.Hex()), zap.String("registry", tpRegistryAddressLnd.Hex()))
 
-	// 1. Deploy ICS20Bank
+	// Deploy ICS20Bank
 	_, bankTx, ics20bank, err := ics20bank2.DeployICS20Bank(authLnd, clientLnd)
 	if err != nil {
 		return fmt.Errorf("failed to deploy ICS20Bank: %w", err)
@@ -76,7 +66,7 @@ func DeploySubnetContracts(
 	}
 	log.Info("ICS20Bank deployed", zap.String("address", bankAddr.Hex()))
 
-	// 2. Deploy TokenRouter
+	// Deploy TokenRouter
 	_, routerTx, tokenRouter, err := tokenrouter.DeployTokenRouter(authLnd, clientLnd, authLnd.From)
 	if err != nil {
 		return fmt.Errorf("failed to deploy TokenRouter: %w", err)
@@ -87,7 +77,7 @@ func DeploySubnetContracts(
 	}
 	log.Info("TokenRouter deployed", zap.String("address", routerAddr.Hex()))
 
-	// 3. Deploy ICS20BankTransferApp
+	// Deploy ICS20BankTransferApp
 	_, transferTx, bankTransfer, err := ics20banktransferapp.DeployICS20BankTransferApp(
 		authLnd,
 		clientLnd,
@@ -131,17 +121,7 @@ func DeploySubnetContracts(
 	}
 
 	// Deploy home token at c-chain
-	baseURL, err := parseBaseURL(urls[0])
-	if err != nil {
-		return err
-	}
 	CChainURL := baseURL + "/ext/bc/C/rpc"
-	cChainBlockchainID, err := info.NewClient(baseURL).GetBlockchainID(ctx, "C")
-	if err != nil {
-		return fmt.Errorf("failed to get C-chain blockchain ID: %w", err)
-	}
-	log.Info("C-chain blockchain ID", zap.String("id", cChainBlockchainID.String()))
-
 	clientC, chainIDC, authC, rpcClientC, err := initializeClientAndAuth(CChainURL, ctx, pkey)
 	if err != nil {
 		return err
@@ -286,7 +266,7 @@ func DeploySubnetContracts(
 
 	log.Info("Successfully verified ERC20TokenRemoteUpgradeable initialization")
 
-	// 7. Setup TokenRouter configuration
+	// Setup TokenRouter configuration
 	if err := setupTokenRouter(ctx, &clientLnd, authLnd, tokenRouter, tokenAddr, homeAddr, remoteTokenAddr, log); err != nil {
 		return fmt.Errorf("failed to setup token router: %w", err)
 	}
@@ -304,6 +284,23 @@ func DeploySubnetContracts(
 		return err
 	}
 	log.Info("SenderOnSubnet LND deployed", zap.String("address", senderAddr.Hex()))
+
+	// Update relayer config
+	lndSubnetID, lndChainID, cChainID, err := getBlockchainsInfo(baseURL)
+	if err != nil {
+		return err
+	}
+	if err := UpdateRelayerConfig(
+		cChainID,
+		lndChainID,
+		lndSubnetID,
+		tpRegistryAddressLnd.Hex(),
+		tpMessengerAddressLnd.Hex(),
+		pk,
+	); err != nil {
+		return err
+	}
+	log.Info("Relayer config updated")
 
 	return nil
 }

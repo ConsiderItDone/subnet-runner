@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
@@ -21,8 +22,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"go.uber.org/zap"
 
-	receiveronsubnet "subnet-runner/abi-bindings/go/ictt/ReceiverOnSubnet"
-	senderonsubnet "subnet-runner/abi-bindings/go/ictt/SenderOnSubnet"
+	receiveronsubnet "subnet-runner/abi-bindings/go/ictt/mocks/ReceiverOnSubnet"
+	senderonsubnet "subnet-runner/abi-bindings/go/ictt/mocks/SenderOnSubnet"
 	teleportermessenger "subnet-runner/abi-bindings/go/teleporter/TeleporterMessenger"
 	teleporterregistry "subnet-runner/abi-bindings/go/teleporter/registry/TeleporterRegistry"
 )
@@ -301,4 +302,25 @@ func deployTestSender(ctx context.Context, auth *bind.TransactOpts, client ethcl
 		return common.Address{}, fmt.Errorf("failed waiting for SenderOnSubnet deployment: %w", err)
 	}
 	return addr, nil
+}
+
+// getBlockchainsInfo gets the IDs of the LND and C-Chain blockchains.
+func getBlockchainsInfo(baseURL string) (string, string, string, error) {
+	client := platformvm.NewClient(baseURL)
+	blockchains, err := client.GetBlockchains(context.Background())
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get blockchains: %w", err)
+	}
+
+	var lndSubnetID, lndChainID, cChainID string
+	for _, blockchain := range blockchains {
+		fmt.Printf("Blockchain ID: %s, SubnetID: %s, Name: %s\n", blockchain.ID.Hex(), blockchain.SubnetID, blockchain.Name)
+		if blockchain.Name == "subnetevm" {
+			lndSubnetID = blockchain.SubnetID.String()
+			lndChainID = blockchain.ID.String()
+		} else if blockchain.Name == "C-Chain" {
+			cChainID = blockchain.ID.String()
+		}
+	}
+	return lndSubnetID, lndChainID, cChainID, nil
 }
