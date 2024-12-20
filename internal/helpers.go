@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -323,4 +324,23 @@ func getBlockchainsInfo(baseURL string) (string, string, string, error) {
 		}
 	}
 	return lndSubnetID, lndChainID, cChainID, nil
+}
+
+// SaveToEnvFile saves key-value pairs to the .env file or creates a new one if it doesn't exist.
+func SaveToEnvFile(envFile string, data map[string]string) error {
+	file, err := os.OpenFile(envFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open .env file: %w", err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	for key, value := range data {
+		if _, err := file.WriteString(fmt.Sprintf("%s=%s\n", key, value)); err != nil {
+			return fmt.Errorf("failed to write to .env file: %w", err)
+		}
+	}
+
+	return nil
 }

@@ -9,6 +9,7 @@ require (
 	github.com/ava-labs/avalanchego v1.11.13
 	github.com/ava-labs/subnet-evm v0.6.12
 	github.com/ethereum/go-ethereum v1.13.14
+	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15

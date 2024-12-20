@@ -302,6 +302,19 @@ func DeploySubnetContracts(
 	}
 	log.Info("Relayer config updated")
 
+	data := map[string]string{
+		"BLOCKCHAIN_ID":          lndChainID,
+		"TRANSFER_APP_ADDRESS":   transferAddr.Hex(),
+		"SHOW_LOGS_ADDR":         transferAddr.Hex(),
+		"ERC20_CONTRACT_ADDRESS": tokenAddr.Hex(),
+		"TOKEN_ROUTER_ADDRESS":   routerAddr.Hex(),
+	}
+
+	if err := SaveToEnvFile("./cmd/app/.env", data); err != nil {
+		fmt.Printf("Error saving to .env file: %v\n", err)
+	} else {
+		fmt.Println("Data saved to .env file successfully")
+	}
 	return nil
 }
 
@@ -373,7 +386,6 @@ func setupTransferApp(
 		return err
 	}
 	log.Info("Bound transfer port")
-
 	return nil
 }
 
@@ -390,14 +402,14 @@ func setupTokenRouter(
 	// Configure wrapped native token
 	tx, err := router.SetTokenConfig(
 		auth,
-		"lnd",       // denom
-		tokenAddr,   // token address
-		remoteAddr,  // remote
-		homeAddr,    // home
-		"channel-0", // IBC channel
-		18,          // decimals
-		false,       // isNative
-		true,        // isExternal
+		"transfer/channel-0/stake", // denom
+		tokenAddr,                  // token address
+		remoteAddr,                 // remote
+		homeAddr,                   // home
+		"channel-0",                // IBC channel
+		18,                         // decimals
+		false,                      // isNative
+		true,                       // isExternal
 	)
 	if err != nil {
 		return err
