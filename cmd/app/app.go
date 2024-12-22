@@ -18,6 +18,8 @@ import (
 	erc20mintburntoken "subnet-runner/abi-bindings/go/ictt/Erc20MintBurnToken"
 	ics20banktransferapp "subnet-runner/abi-bindings/go/ictt/ICS20/ICS20BankTransferApp"
 	tokenrouter "subnet-runner/abi-bindings/go/ictt/ICS20/TokenRouter"
+	erc20tokenhome "subnet-runner/abi-bindings/go/ictt/TokenHome/ERC20TokenHome"
+	erc20tokenremoteupgradeable "subnet-runner/abi-bindings/go/ictt/TokenRemote/ERC20TokenRemoteUpgradeable"
 	"subnet-runner/internal/ics20"
 )
 
@@ -26,17 +28,20 @@ const (
 
 	FlagBlockchainIDName  = "bc-id"
 	FlagTransferAppName   = "app" // bank transfer app address
-	FlagAccountAddrName   = "addr"
+	FlagShowLogsAddrName  = "addr"
 	FlagErc20ContractName = "erc20"
 	FlagHashName          = "hash"
 	FlagRouterAddressName = "router"
+	FlagHomeAddressName   = "home"
+	FlagRemoteAddressName = "remote"
 
 	defaultHashValue          = "0xSomeHash"
 	defaultBlockchainID       = "2m11W6dgpvs789P9cYCLDLTrY7ent858A75tq9k7ki9oVwb4oL"
 	defaultTransferAppAddress = "0x4Ac1d98D9cEF99EC6546dEd4Bd550b0b287aaD6D"
 	defaultShowLogsAddr       = "0x4Ac1d98D9cEF99EC6546dEd4Bd550b0b287aaD6D"
-	defaultErc20Contract      = "0xYourERC20ContractAddress"
-
+	defaultErc20Contract      = "0x5aa01B3b5877255cE50cc55e8986a7a5fe29C70e" // mint burn token
+	defaultHomeAddr           = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9" // token home address
+	defaultRemoteAddr         = "0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00" // token home address
 	defaultTokenRouterAddress = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9"
 )
 
@@ -70,6 +75,7 @@ func appInstance(c *cli.Context) (*ics20banktransferapp.ICS20BankTransferApp, et
 	return app, client, nil
 }
 
+// sendDirectToTransferApp sends a direct transfer to the transfer app
 func sendDirectToTransferApp(
 	c *cli.Context,
 ) error {
@@ -106,12 +112,13 @@ func sendDirectToTransferApp(
 	}
 	fmt.Printf("Token Config: %+v\n", tokenConfig)
 
+	addressBytes := common.HexToAddress(c.String(FlagShowLogsAddrName)).Bytes()
 	// send test onReceivePacket
 	packedData, err := ics20.FungibleTokenPacketDataPack(
 		"stake",
 		big.NewInt(44444),
 		[]byte("testSender"),
-		[]byte("0xa76ea4a195DC2C040614479a5E24fF6Ff51ACBec"),
+		addressBytes,
 		[]byte("memo-test"),
 	)
 	if err != nil {
@@ -142,6 +149,55 @@ func sendDirectToTransferApp(
 	}
 
 	fmt.Printf("TransferApp OnRecvPacket called: tx=%s, receipt=%d\n", tx.Hash().Hex(), receipt.Status)
+
+	return nil
+}
+
+// registerRemote registers the remote at the HomeToken
+func registerRemote(
+	c *cli.Context,
+) error {
+	client, err := getClient(c.String(FlagBlockchainIDName))
+	if err != nil {
+		return err
+	}
+
+	pkey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	tokenRemoteAddress := common.HexToAddress(c.String(FlagRemoteAddressName))
+	tokenRemote, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(tokenRemoteAddress, client)
+	if err != nil {
+		return fmt.Errorf("failed to create token router instance: %w", err)
+	}
+
+	feeInfo := erc20tokenremoteupgradeable.TeleporterFeeInfo{
+		FeeTokenAddress: common.Address{},
+		Amount:          big.NewInt(0),
+	}
+
+	tx, err := tokenRemote.RegisterWithHome(auth, feeInfo)
+	if err != nil {
+		return err
+	}
+	receipt, err := bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Remote Register called: tx=%s, receipt=%d\n", tx.Hash().Hex(), receipt.Status)
 
 	return nil
 }
@@ -202,7 +258,7 @@ func balanceERC20(c *cli.Context) error {
 		return err
 	}
 
-	address := common.HexToAddress(c.String(FlagAccountAddrName))
+	address := common.HexToAddress(c.String(FlagShowLogsAddrName))
 	contractAddress := common.HexToAddress(c.String(FlagErc20ContractName))
 
 	// Create an instance of the ERC20MintBurnToken contract
@@ -227,7 +283,7 @@ func balanceNative(c *cli.Context) error {
 		return err
 	}
 
-	address := common.HexToAddress(c.String(FlagAccountAddrName))
+	address := common.HexToAddress(c.String(FlagShowLogsAddrName))
 	// Get the balance
 	balance, err := client.BalanceAt(context.Background(), address, nil)
 	if err != nil {
@@ -272,11 +328,172 @@ func showTransferAppLogsByHash(c *cli.Context) error {
 	return nil
 }
 
+func showAllLogsTokenHome(c *cli.Context) error {
+	client, err := getClient("C")
+	if err != nil {
+		return err
+	}
+
+	contractAddress := common.HexToAddress(c.String(FlagHomeAddressName))
+	contract, err := erc20tokenhome.NewERC20TokenHome(contractAddress, client)
+	if err != nil {
+		return fmt.Errorf("failed to create contract instance: %v", err)
+	}
+
+	filterOpts := &bind.FilterOpts{
+		Start:   0,   // Начало блока
+		End:     nil, // Конец блока (nil означает текущий блок)
+		Context: context.Background(),
+	}
+
+	remoteRegisteredIterator, err := contract.FilterRemoteRegistered(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer remoteRegisteredIterator.Close()
+
+	for remoteRegisteredIterator.Next() {
+		event := remoteRegisteredIterator.Event
+		fmt.Printf("RemoteRegistered: %+v\n", event)
+	}
+	if err := remoteRegisteredIterator.Error(); err != nil {
+		return err
+	}
+
+	teleporterPausedIterator, err := contract.FilterTeleporterAddressPaused(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer teleporterPausedIterator.Close()
+
+	for teleporterPausedIterator.Next() {
+		event := teleporterPausedIterator.Event
+		fmt.Printf("TeleporterAddressPaused: %+v\n", event)
+	}
+	if err := teleporterPausedIterator.Error(); err != nil {
+		return err
+	}
+
+	teleporterUnpausedIterator, err := contract.FilterTeleporterAddressUnpaused(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer teleporterUnpausedIterator.Close()
+
+	for teleporterUnpausedIterator.Next() {
+		event := teleporterUnpausedIterator.Event
+		fmt.Printf("TeleporterAddressUnpaused: %+v\n", event)
+	}
+	if err := teleporterUnpausedIterator.Error(); err != nil {
+		return err
+	}
+
+	toCosmosTokensSentIterator, err := contract.FilterToCosmosTokensSent(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer toCosmosTokensSentIterator.Close()
+
+	for toCosmosTokensSentIterator.Next() {
+		event := toCosmosTokensSentIterator.Event
+		fmt.Printf("ToCosmosTokensSent: %+v\n", event)
+	}
+	if err := toCosmosTokensSentIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensAndCallRoutedIterator, err := contract.FilterTokensAndCallRouted(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensAndCallRoutedIterator.Close()
+
+	for tokensAndCallRoutedIterator.Next() {
+		event := tokensAndCallRoutedIterator.Event
+		fmt.Printf("TokensAndCallRouted: %+v\n", event)
+	}
+	if err := tokensAndCallRoutedIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensAndCallSentIterator, err := contract.FilterTokensAndCallSent(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensAndCallSentIterator.Close()
+
+	for tokensAndCallSentIterator.Next() {
+		event := tokensAndCallSentIterator.Event
+		fmt.Printf("TokensAndCallSent: %+v\n", event)
+	}
+	if err := tokensAndCallSentIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensCosmosWithdrawnIterator, err := contract.FilterTokensCosmosWithdrawn(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensCosmosWithdrawnIterator.Close()
+
+	for tokensCosmosWithdrawnIterator.Next() {
+		event := tokensCosmosWithdrawnIterator.Event
+		fmt.Printf("TokensCosmosWithdrawn: %+v\n", event)
+	}
+	if err := tokensCosmosWithdrawnIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensRoutedIterator, err := contract.FilterTokensRouted(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensRoutedIterator.Close()
+
+	for tokensRoutedIterator.Next() {
+		event := tokensRoutedIterator.Event
+		fmt.Printf("TokensRouted: %+v\n", event)
+	}
+	if err := tokensRoutedIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensSentIterator, err := contract.FilterTokensSent(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensSentIterator.Close()
+
+	for tokensSentIterator.Next() {
+		event := tokensSentIterator.Event
+		fmt.Printf("TokensSent: %+v\n", event)
+	}
+	if err := tokensSentIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensWithdrawnIterator, err := contract.FilterTokensWithdrawn(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensWithdrawnIterator.Close()
+
+	for tokensWithdrawnIterator.Next() {
+		event := tokensWithdrawnIterator.Event
+		fmt.Printf("TokensWithdrawn: %+v\n", event)
+	}
+	if err := tokensWithdrawnIterator.Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	// Load .env file
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Error loading .env file, using default values")
+		fmt.Println("Error loading .env file, using default values")
 	}
 
 	// Get values from environment variables or use default values
@@ -285,6 +502,8 @@ func main() {
 	showLogsAddr := getEnv("SHOW_LOGS_ADDR", defaultShowLogsAddr)
 	erc20Contract := getEnv("ERC20_CONTRACT_ADDRESS", defaultErc20Contract)
 	routerAddress := getEnv("TOKEN_ROUTER_ADDRESS", defaultTokenRouterAddress)
+	homeAddress := getEnv("TOKEN_HOME_ADDRESS", defaultHomeAddr)
+	remoteAddress := getEnv("TOKEN_REMOTE_ADDRESS", defaultRemoteAddr)
 
 	// Define flags
 	FlagBlockchainID := cli.StringFlag{
@@ -296,7 +515,7 @@ func main() {
 		Value: transferAppAddr,
 	}
 	FlagAddr := cli.StringFlag{
-		Name:  FlagAccountAddrName,
+		Name:  FlagShowLogsAddrName,
 		Value: showLogsAddr,
 	}
 	FlagContr := cli.StringFlag{
@@ -312,42 +531,78 @@ func main() {
 		Name:  FlagRouterAddressName,
 		Value: routerAddress,
 	}
+	FlagHomeAddress := cli.StringFlag{
+		Name:  FlagHomeAddressName,
+		Value: homeAddress,
+	}
+	FlagRemoteAddress := cli.StringFlag{
+		Name:  FlagRemoteAddressName,
+		Value: remoteAddress,
+	}
 
 	app := cli.NewApp()
 	app.Name = "app"
 	app.Usage = "ics20 bank transfer app cli"
-	app.Flags = []cli.Flag{FlagBlockchainID, FlagTransferApp, FlagAddr, FlagContr, FlagHash, FlagRouterAddress}
+	app.Flags = []cli.Flag{
+		FlagBlockchainID,
+		FlagTransferApp,
+		FlagAddr,
+		FlagContr,
+		FlagHash,
+		FlagRouterAddress,
+		FlagRemoteAddress,
+		FlagHomeAddress,
+	}
+
 	app.Commands = []cli.Command{
 		{
 			Flags:     []cli.Flag{FlagBlockchainID, FlagTransferApp},
 			Name:      "show-all-logs",
+			Usage:     "Show all logs from the transfer app",
 			ShortName: "s",
 			Action:    showAllLogs,
 		},
 		{
 			Flags:     []cli.Flag{FlagBlockchainID, FlagAddr},
 			Name:      "balance-native",
+			Usage:     "Show the balance of the native token",
 			ShortName: "n",
 			Action:    balanceNative,
 		},
 		{
 			Flags:     []cli.Flag{FlagBlockchainID, FlagAddr, FlagContr},
 			Name:      "balance-erc20",
+			Usage:     "Show the balance of the ERC20 token",
 			ShortName: "e",
 			Action:    balanceERC20,
 		},
 		{
 			Flags:     []cli.Flag{FlagBlockchainID, FlagTransferApp, FlagHash},
 			Name:      "show-app-logs-by-hash",
+			Usage:     "Show the logs of the transfer app by hash",
 			ShortName: "h",
 			Action:    showTransferAppLogsByHash,
 		},
 		{
-			Flags:     []cli.Flag{FlagBlockchainID, FlagTransferApp, FlagRouterAddress},
+			Flags:     []cli.Flag{FlagBlockchainID, FlagTransferApp, FlagRouterAddress, FlagAddr},
 			Name:      "send-direct-transfer",
 			ShortName: "t",
-			Usage:     "send a direct transfer to the transfer app",
+			Usage:     "Send a direct transfer from subnets to C-Chain",
 			Action:    sendDirectToTransferApp,
+		},
+		{
+			Flags:     []cli.Flag{FlagBlockchainID, FlagHomeAddress},
+			Name:      "get-token-home-events",
+			ShortName: "g",
+			Usage:     "Get all events from HomeToken",
+			Action:    showAllLogsTokenHome,
+		},
+		{
+			Flags:     []cli.Flag{FlagBlockchainID, FlagRemoteAddress},
+			Name:      "register-remote",
+			ShortName: "r",
+			Usage:     "Register remote at the HomeToken",
+			Action:    registerRemote,
 		},
 	}
 

@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -324,6 +325,29 @@ func getBlockchainsInfo(baseURL string) (string, string, string, error) {
 		}
 	}
 	return lndSubnetID, lndChainID, cChainID, nil
+}
+
+// getLNDChainID gets the ID of the LND blockchain.
+func getBlockchainID(baseURL, chainName string) ([32]byte, error) {
+	var blockchainID [32]byte
+	client := platformvm.NewClient(baseURL)
+	blockchains, err := client.GetBlockchains(context.Background())
+	if err != nil {
+		return blockchainID, fmt.Errorf("failed to get blockchains: %w", err)
+	}
+
+	for _, blockchain := range blockchains {
+		if blockchain.Name == chainName {
+			chainIDBytes, err := hex.DecodeString(blockchain.ID.Hex())
+			if err != nil {
+				return blockchainID, fmt.Errorf("failed to decode chain ID: %w", err)
+			}
+
+			copy(blockchainID[:], chainIDBytes)
+			return blockchainID, nil
+		}
+	}
+	return blockchainID, fmt.Errorf("failed to get blockchain ID for %s", chainName)
 }
 
 // SaveToEnvFile saves key-value pairs to the .env file or creates a new one if it doesn't exist.

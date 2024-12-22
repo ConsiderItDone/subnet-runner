@@ -16,7 +16,7 @@ import (
 	ics20bank2 "subnet-runner/abi-bindings/go/ictt/ICS20/ICS20Bank"
 	ics20banktransferapp "subnet-runner/abi-bindings/go/ictt/ICS20/ICS20BankTransferApp"
 	tokenrouter "subnet-runner/abi-bindings/go/ictt/ICS20/TokenRouter"
-	erc20tokenhome "subnet-runner/abi-bindings/go/ictt/TokenHome/ERC20TokenHome"
+	erc20tokenhomeupgradable "subnet-runner/abi-bindings/go/ictt/TokenHome/ERC20TokenHomeUpgradeable"
 	erc20tokenremoteupgradeable "subnet-runner/abi-bindings/go/ictt/TokenRemote/ERC20TokenRemoteUpgradeable"
 )
 
@@ -96,7 +96,7 @@ func DeploySubnetContracts(
 	log.Info("ICS20BankTransferApp deployed", zap.String("address", transferAddr.Hex()))
 
 	// Deploy remoteToken
-	_, remoteTokenTx, _, err := erc20tokenremoteupgradeable.DeployERC20TokenRemoteUpgradeable(
+	_, remoteTokenTx, remoteToken, err := erc20tokenremoteupgradeable.DeployERC20TokenRemoteUpgradeable(
 		authLnd,
 		clientLnd,
 		0,
@@ -154,9 +154,23 @@ func DeploySubnetContracts(
 	log.Info("ERC20MintBurnToken deployed to C-chain", zap.String("address", tokenAddr.Hex()))
 
 	// Deploy ERC20TokenHome
-	_, homeTokenTx, _, err := erc20tokenhome.DeployERC20TokenHome(
+	_, homeTokenTx, tokenHome, err := erc20tokenhomeupgradable.DeployERC20TokenHomeUpgradeable(
 		authC,
 		clientC,
+		0)
+	if err != nil {
+		return fmt.Errorf("failed to deploy ERC20TokenHomeUpgradeable: %w", err)
+	}
+
+	homeAddr, err := bind.WaitDeployed(ctx, clientC, homeTokenTx)
+	if err != nil {
+		return fmt.Errorf("failed waiting for ERC20TokenHomeUpgradeable deployment: %w", err)
+	}
+	log.Info("ERC20TokenHomeUpgradeable deployed to C-chain", zap.String("address", homeAddr.Hex()))
+
+	// Initialize the remote token
+	tx, err := tokenHome.Initialize(
+		authC,
 		tpRegistryAddressC,  // teleporter registry address
 		tpMessengerAddressC, // teleporter manager
 		big.NewInt(1),       // min teleporter version
@@ -164,16 +178,16 @@ func DeploySubnetContracts(
 		18,                  // token decimals
 	)
 	if err != nil {
-		return fmt.Errorf("failed to deploy ERC20TokenHome: %w", err)
+		return fmt.Errorf("failed to initialize ERC20TokenHomeUpgradeable: %w", err)
 	}
-	homeAddr, err := bind.WaitDeployed(ctx, clientC, homeTokenTx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for ERC20TokenHome deployment: %w", err)
+
+	if _, err := bind.WaitMined(ctx, clientC, tx); err != nil {
+		return fmt.Errorf("failed waiting for ERC20TokenHomeUpgradeable initialization: %w", err)
 	}
-	log.Info("ERC20TokenHome deployed to C-chain", zap.String("address", homeAddr.Hex()))
+	log.Info("Initialized ERC20TokenHomeUpgradeable")
 
 	// Set home address in ERC20 token
-	tx, err := erc20Token.SetHomeAddress(authC, homeAddr)
+	tx, err = erc20Token.SetHomeAddress(authC, homeAddr)
 	if err != nil {
 		return fmt.Errorf("failed to set home address in ERC20 token: %w", err)
 	}
@@ -182,16 +196,16 @@ func DeploySubnetContracts(
 	}
 	log.Info("Set home address in ERC20 token")
 
-	remoteToken, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(remoteTokenAddr, clientLnd)
-	if err != nil {
-		return fmt.Errorf("failed to get ERC20TokenRemoteUpgradeable instance: %w", err)
-	}
+	// remoteToken, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(remoteTokenAddr, clientLnd)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get ERC20TokenRemoteUpgradeable instance: %w", err)
+	// }
 
-	// Create settings struct for initialization
-	tokenHomeBlockchainID := [32]byte{}
-	chainIDBytes := chainIDC.Bytes()
-	// Copy bytes from right to left to preserve big-endian order
-	copy(tokenHomeBlockchainID[32-len(chainIDBytes):], chainIDBytes)
+	// Init token remote
+	tokenHomeBlockchainID, err := getBlockchainID(baseURL, "C-Chain")
+	if err != nil {
+		return err
+	}
 
 	settings := erc20tokenremoteupgradeable.TokenRemoteSettings{
 		TeleporterRegistryAddress: tpRegistryAddressLnd,
@@ -308,6 +322,8 @@ func DeploySubnetContracts(
 		"SHOW_LOGS_ADDR":         transferAddr.Hex(),
 		"ERC20_CONTRACT_ADDRESS": tokenAddr.Hex(),
 		"TOKEN_ROUTER_ADDRESS":   routerAddr.Hex(),
+		"TOKEN_HOME_ADDRESS":     homeAddr.Hex(),
+		"TOKEN_REMOTE_ADDRESS":   remoteTokenAddr.Hex(),
 	}
 
 	if err := SaveToEnvFile("./cmd/app/.env", data); err != nil {
