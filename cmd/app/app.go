@@ -248,6 +248,17 @@ func showAllLogs(c *cli.Context) error {
 		}
 	}
 
+	// Parse PacketSent events
+	packetSentIterator, err := contract.FilterPacketSent(filterOpts)
+	if err == nil {
+		defer packetSentIterator.Close()
+		for packetSentIterator.Next() {
+			event := packetSentIterator.Event
+			fmt.Printf("PacketSent: Denom=%s, Amount=%s, Receiver=%x, SourcePort=%s, SourceChannel=%s, MessageID=%x\n",
+				event.Denom, event.Amount.String(), event.Receiver, event.SourcePort, event.SourceChannel, event.MessageID)
+		}
+	}
+
 	return nil
 }
 
