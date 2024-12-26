@@ -229,33 +229,12 @@ func showAllLogs(c *cli.Context) error {
 		}
 	}
 
-	packetIterator, err := contract.FilterPacketReceived(filterOpts)
-	if err == nil {
-		defer packetIterator.Close()
-		for packetIterator.Next() {
-			event := packetIterator.Event
-			fmt.Printf("PacketReceived: Denom=%s, PrefixedDenom=%s, Amount=%s, Sender=%x, Receiver=%x, Memo=%x, MsgSender=%x, IbcAddress=%x\n",
-				event.Denom, event.PrefixedDenom, event.Amount.String(), event.Sender, event.Receiver, event.Memo, event.MsgSender, event.IbcAddress)
-		}
-	}
-
 	tokenRoutingIterator, err := contract.FilterTokenRoutingFailed(filterOpts)
 	if err == nil {
 		defer tokenRoutingIterator.Close()
 		for tokenRoutingIterator.Next() {
 			event := tokenRoutingIterator.Event
 			fmt.Printf("TokenRoutingFailed: Denom=%s, Reason=%s\n", event.Denom, event.Reason)
-		}
-	}
-
-	// Parse PacketSent events
-	packetSentIterator, err := contract.FilterPacketSent(filterOpts)
-	if err == nil {
-		defer packetSentIterator.Close()
-		for packetSentIterator.Next() {
-			event := packetSentIterator.Event
-			fmt.Printf("PacketSent: Denom=%s, Amount=%s, Receiver=%x, SourcePort=%s, SourceChannel=%s, MessageID=%x\n",
-				event.Denom, event.Amount.String(), event.Receiver, event.SourcePort, event.SourceChannel, event.MessageID)
 		}
 	}
 
@@ -319,12 +298,6 @@ func showTransferAppLogsByHash(c *cli.Context) error {
 	}
 
 	for _, lg := range receipt.Logs {
-		event, err := contract.ParsePacketReceived(*lg)
-		if err == nil {
-			fmt.Printf("PacketReceived: Denom=%s, PrefixedDenom=%s, Amount=%s, Sender=%x, Receiver=%x, Memo=%x, MsgSender=%x, IbcAddress=%x\n",
-				event.Denom, event.PrefixedDenom, event.Amount.String(), event.Sender, event.Receiver, event.Memo, event.MsgSender, event.IbcAddress)
-		}
-
 		eventOwnership, err := contract.ParseOwnershipTransferred(*lg)
 		if err == nil {
 			fmt.Printf("OwnershipTransferred: PreviousOwner=%s, NewOwner=%s\n", eventOwnership.PreviousOwner.Hex(), eventOwnership.NewOwner.Hex())
