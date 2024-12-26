@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Path to simd binary
+SIMD_PATH=~/src/citd/ibc-go-strangelove-private/build/simd
+
+# Check number of arguments
+if [ "$#" -ne 2 ]; then
+    echo "Error: two arguments required"
+    echo "Usage: $0 SENDER_COSMOS_ADDRESS EVM_RECEIVER_ADDRESS"
+    exit 1
+fi
+
+# Save arguments to variables
+SENDER_COSMOS_ADDRESS=$1
+EVM_RECEIVER_ADDRESS=$2
+
+# Check if addresses are provided
+if [ -z "$SENDER_COSMOS_ADDRESS" ] || [ -z "$EVM_RECEIVER_ADDRESS" ]; then
+    echo "Error: both addresses must be provided"
+    exit 1
+fi
+
+echo "Checking Cosmos address balance: $SENDER_COSMOS_ADDRESS"
+"$SIMD_PATH" q bank balances "$SENDER_COSMOS_ADDRESS"
+
+echo -e "\nChecking ERC20 address balance: $EVM_RECEIVER_ADDRESS"
+go run app.go balance-erc20 --bc-id C --addr "$EVM_RECEIVER_ADDRESS"
