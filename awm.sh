@@ -2,7 +2,8 @@
 
 # Define the configuration file paths
 AWM_CONFIG_FILE="./awm-relayer-config.json"
-RELAYER_CONFIG_FILE="~/.relayer/config/config.yaml"
+# use full path to avoid issues with sed
+RELAYER_CONFIG_FILE="/Users/vn/.relayer/config/config.yaml"
 
 # Read values from awm-relayer-config.json
 SUBNET_ID="2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c"
