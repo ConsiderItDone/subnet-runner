@@ -13,7 +13,6 @@ import (
 	"go.uber.org/zap"
 
 	erc20mintburntoken "subnet-runner/abi-bindings/go/ictt/ERC20MintBurnToken"
-	ics20bank2 "subnet-runner/abi-bindings/go/ictt/ICS20/ICS20Bank"
 	ics20banktransferapp "subnet-runner/abi-bindings/go/ictt/ICS20/ICS20BankTransferApp"
 	tokenrouter "subnet-runner/abi-bindings/go/ictt/ICS20/TokenRouter"
 	erc20tokenhomeupgradable "subnet-runner/abi-bindings/go/ictt/TokenHome/ERC20TokenHomeUpgradeable"
@@ -55,17 +54,6 @@ func DeploySubnetContracts(
 	}
 	log.Info("Teleporter contracts deployed", zap.String("messenger", tpMessengerAddressLnd.Hex()), zap.String("registry", tpRegistryAddressLnd.Hex()))
 
-	// Deploy ICS20Bank
-	_, bankTx, ics20bank, err := ics20bank2.DeployICS20Bank(authLnd, clientLnd)
-	if err != nil {
-		return fmt.Errorf("failed to deploy ICS20Bank: %w", err)
-	}
-	bankAddr, err := bind.WaitDeployed(ctx, clientLnd, bankTx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for ICS20Bank deployment: %w", err)
-	}
-	log.Info("ICS20Bank deployed", zap.String("address", bankAddr.Hex()))
-
 	// Deploy TokenRouter
 	_, routerTx, tokenRouter, err := tokenrouter.DeployTokenRouter(authLnd, clientLnd, authLnd.From)
 	if err != nil {
@@ -82,7 +70,6 @@ func DeploySubnetContracts(
 		authLnd,
 		clientLnd,
 		ibcAddr,
-		bankAddr,
 		authLnd.From,
 		routerAddr,
 	)
@@ -109,11 +96,6 @@ func DeploySubnetContracts(
 		return fmt.Errorf("failed waiting for ERC20TokenRemoteUpgradeable deployment: %w", err)
 	}
 	log.Info("ERC20TokenRemoteUpgradeable deployed", zap.String("address", remoteTokenAddr.Hex()))
-
-	// Setup operators for ICS20Bank
-	if err := setOperators(ctx, &clientLnd, authLnd, ics20bank, ibcAddr, transferAddr, log); err != nil {
-		return fmt.Errorf("failed to set operators: %w", err)
-	}
 
 	// Setup escrow addresses for ICS20BankTransferApp
 	if err := setupTransferApp(ctx, &clientLnd, authLnd, bankTransfer, ibcAddr, log); err != nil {
@@ -331,47 +313,6 @@ func DeploySubnetContracts(
 	} else {
 		fmt.Println("Data saved to .env file successfully")
 	}
-	return nil
-}
-
-func setOperators(
-	ctx context.Context,
-	client *ethclient.Client,
-	auth *bind.TransactOpts,
-	bank *ics20bank2.ICS20Bank,
-	ibcAddr, transferAddr common.Address,
-	log logging.Logger,
-) error {
-	// Set deployer as operator
-	tx1, err := bank.SetOperator(auth, auth.From)
-	if err != nil {
-		return err
-	}
-	if _, err := bind.WaitMined(ctx, *client, tx1); err != nil {
-		return err
-	}
-	log.Info("Set deployer as operator")
-
-	// Set IBC contract as operator
-	tx2, err := bank.SetOperator(auth, ibcAddr)
-	if err != nil {
-		return err
-	}
-	if _, err := bind.WaitMined(ctx, *client, tx2); err != nil {
-		return err
-	}
-	log.Info("Set IBC contract as operator")
-
-	// Set TransferApp as operator
-	tx3, err := bank.SetOperator(auth, transferAddr)
-	if err != nil {
-		return err
-	}
-	if _, err := bind.WaitMined(ctx, *client, tx3); err != nil {
-		return err
-	}
-	log.Info("Set TransferApp as operator")
-
 	return nil
 }
 
