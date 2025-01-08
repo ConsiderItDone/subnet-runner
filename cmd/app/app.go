@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	pk  = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
-	pk2 = "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e"
+	pk  = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027" // base pk
+	pk2 = "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e" // used for sending to cosmos
 
 	FlagBlockchainIDName  = "bc-id"
 	FlagBlockchainIDHex   = "bc-id-hex"

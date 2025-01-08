@@ -49,15 +49,15 @@
     },
     {
       "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
-      "blockchain-id": "2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r",
+      "blockchain-id": "SfMsvucotmJk9XfmhnjCNoyqKDtfwUXHVP8wFoKJzZAjfeszz",
       "vm": "evm",
       "rpc-endpoint": {
-        "base-url": "http://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/rpc",
+        "base-url": "http://127.0.0.1:9650/ext/bc/SfMsvucotmJk9XfmhnjCNoyqKDtfwUXHVP8wFoKJzZAjfeszz/rpc",
         "query-parameters": null,
         "http-headers": null
       },
       "ws-endpoint": {
-        "base-url": "ws://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/ws",
+        "base-url": "ws://127.0.0.1:9650/ext/bc/SfMsvucotmJk9XfmhnjCNoyqKDtfwUXHVP8wFoKJzZAjfeszz/ws",
         "query-parameters": null,
         "http-headers": null
       },
@@ -96,10 +96,10 @@
     },
     {
       "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
-      "blockchain-id": "2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r",
+      "blockchain-id": "SfMsvucotmJk9XfmhnjCNoyqKDtfwUXHVP8wFoKJzZAjfeszz",
       "vm": "evm",
       "rpc-endpoint": {
-        "base-url": "http://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/rpc",
+        "base-url": "http://127.0.0.1:9650/ext/bc/SfMsvucotmJk9XfmhnjCNoyqKDtfwUXHVP8wFoKJzZAjfeszz/rpc",
         "query-parameters": null,
         "http-headers": null
       },
