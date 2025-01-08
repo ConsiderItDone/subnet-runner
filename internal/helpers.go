@@ -307,24 +307,25 @@ func deployTestSender(ctx context.Context, auth *bind.TransactOpts, client ethcl
 }
 
 // getBlockchainsInfo gets the IDs of the LND and C-Chain blockchains.
-func getBlockchainsInfo(baseURL string) (string, string, string, error) {
+func getBlockchainsInfo(baseURL string) (string, string, string, string, error) {
 	client := platformvm.NewClient(baseURL)
 	blockchains, err := client.GetBlockchains(context.Background())
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get blockchains: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to get blockchains: %w", err)
 	}
 
-	var lndSubnetID, lndChainID, cChainID string
+	var lndSubnetID, lndChainID, cChainID, lndChainIDHex string
 	for _, blockchain := range blockchains {
 		fmt.Printf("Blockchain ID: %s, SubnetID: %s, Name: %s\n", blockchain.ID.Hex(), blockchain.SubnetID, blockchain.Name)
 		if blockchain.Name == "subnetevm" {
 			lndSubnetID = blockchain.SubnetID.String()
 			lndChainID = blockchain.ID.String()
+			lndChainIDHex = blockchain.ID.Hex()
 		} else if blockchain.Name == "C-Chain" {
 			cChainID = blockchain.ID.String()
 		}
 	}
-	return lndSubnetID, lndChainID, cChainID, nil
+	return lndSubnetID, lndChainID, lndChainIDHex, cChainID, nil
 }
 
 // getLNDChainID gets the ID of the LND blockchain.

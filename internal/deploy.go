@@ -20,7 +20,11 @@ import (
 )
 
 const (
-	pk = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	pk               = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	pkAwm            = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	AwmAddress       = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+	erc20tokenName   = "Landslide"
+	erc20tokenSymbol = "transfer/channel-0/stake"
 )
 
 // DeploySubnetContracts deploys contracts to the subnet and C-chain and sets up the relayer config
@@ -121,10 +125,10 @@ func DeploySubnetContracts(
 	_, erc20Tx, erc20Token, err := erc20mintburntoken.DeployERC20MintBurnToken(
 		authC,
 		clientC,
-		"Landslide", // name
-		"LND",       // symbol
-		18,          // decimals
-		authC.From,  // initial owner
+		erc20tokenName,   // name
+		erc20tokenSymbol, // symbol
+		18,               // decimals
+		authC.From,       // initial owner
 	)
 	if err != nil {
 		return fmt.Errorf("failed to deploy ERC20MintBurnToken: %w", err)
@@ -202,12 +206,12 @@ func DeploySubnetContracts(
 	tx, err = remoteToken.Initialize(
 		authLnd,
 		settings,
-		"Landslide",  // name
-		"LND",        // symbol
-		uint8(18),    // decimals
-		routerAddr,   // tokenRouterChannelReader address
-		transferAddr, // ibcBaseFungibleApp address
-		transferAddr, // transferrer address (ibcBaseFungibleApp)
+		erc20tokenName,   // name
+		erc20tokenSymbol, // symbol
+		uint8(18),        // decimals
+		routerAddr,       // tokenRouterChannelReader address
+		transferAddr,     // ibcBaseFungibleApp address
+		transferAddr,     // transferrer address (ibcBaseFungibleApp)
 	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize ERC20TokenRemoteUpgradeable: %w", err)
@@ -223,16 +227,16 @@ func DeploySubnetContracts(
 	if err != nil {
 		return fmt.Errorf("failed to get token name after initialization: %w", err)
 	}
-	if tokenName != "Landslide" {
-		return fmt.Errorf("unexpected token name after initialization: got %s, want Landslide", tokenName)
+	if tokenName != erc20tokenName {
+		return fmt.Errorf("unexpected token name after initialization: got %s, want %s", tokenName, erc20tokenName)
 	}
 
 	tokenSymbol, err := remoteToken.Symbol(&bind.CallOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to get token symbol after initialization: %w", err)
 	}
-	if tokenSymbol != "LND" {
-		return fmt.Errorf("unexpected token symbol after initialization: got %s, want LND", tokenSymbol)
+	if tokenSymbol != erc20tokenSymbol {
+		return fmt.Errorf("unexpected token symbol after initialization: got %s, want %s", tokenSymbol, erc20tokenSymbol)
 	}
 
 	tokenDecimals, err := remoteToken.Decimals(&bind.CallOpts{})
@@ -281,8 +285,18 @@ func DeploySubnetContracts(
 	}
 	log.Info("SenderOnSubnet LND deployed", zap.String("address", senderAddr.Hex()))
 
+	// fund Awm Address at C-Chain and LND subnet
+	if err := fundAddress(ctx, clientC, authC, common.HexToAddress(AwmAddress), pkey, chainIDC, log); err != nil {
+		return fmt.Errorf("failed to fund address: %w", err)
+	}
+	log.Info("Awm Address funded at C-Chain")
+	if err := fundAddress(ctx, clientLnd, authLnd, common.HexToAddress(AwmAddress), pkey, chainIDLnd, log); err != nil {
+		return fmt.Errorf("failed to fund address: %w", err)
+	}
+	log.Info("Awm Address funded at LND subnet")
+
 	// Update relayer config
-	lndSubnetID, lndChainID, cChainID, err := getBlockchainsInfo(baseURL)
+	lndSubnetID, lndChainID, lndChainIDHex, cChainID, err := getBlockchainsInfo(baseURL)
 	if err != nil {
 		return err
 	}
@@ -292,7 +306,7 @@ func DeploySubnetContracts(
 		lndSubnetID,
 		tpRegistryAddressLnd.Hex(),
 		tpMessengerAddressLnd.Hex(),
-		pk,
+		pkAwm,
 	); err != nil {
 		return err
 	}
@@ -306,6 +320,7 @@ func DeploySubnetContracts(
 		"TOKEN_ROUTER_ADDRESS":   routerAddr.Hex(),
 		"TOKEN_HOME_ADDRESS":     homeAddr.Hex(),
 		"TOKEN_REMOTE_ADDRESS":   remoteTokenAddr.Hex(),
+		"BLOCKCHAIN_ID_HEX":      lndChainIDHex,
 	}
 
 	if err := SaveToEnvFile("./cmd/app/.env", data); err != nil {

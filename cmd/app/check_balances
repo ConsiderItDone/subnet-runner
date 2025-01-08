@@ -3,16 +3,21 @@
 # Path to simd binary
 SIMD_PATH=~/src/citd/ibc-go-strangelove-private/build/simd
 
+# Default addresses
+DEFAULT_SENDER_COSMOS_ADDRESS="cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga"
+DEFAULT_EVM_RECEIVER_ADDRESS="0x976EA74026E726554dB657fA54763abd0C3a0aa9"
+
 # Check number of arguments
 if [ "$#" -ne 2 ]; then
-    echo "Error: two arguments required"
-    echo "Usage: $0 SENDER_COSMOS_ADDRESS EVM_RECEIVER_ADDRESS"
-    exit 1
+    echo "Using default addresses"
+    SENDER_COSMOS_ADDRESS=$DEFAULT_SENDER_COSMOS_ADDRESS
+    EVM_RECEIVER_ADDRESS=$DEFAULT_EVM_RECEIVER_ADDRESS
+else
+    # Save arguments to variables
+    SENDER_COSMOS_ADDRESS=$1
+    EVM_RECEIVER_ADDRESS=$2
 fi
 
-# Save arguments to variables
-SENDER_COSMOS_ADDRESS=$1
-EVM_RECEIVER_ADDRESS=$2
 
 # Check if addresses are provided
 if [ -z "$SENDER_COSMOS_ADDRESS" ] || [ -z "$EVM_RECEIVER_ADDRESS" ]; then

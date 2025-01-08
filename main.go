@@ -353,9 +353,15 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	// }`),
 	chains, err := nw.CreateBlockchains(context.Background(), []network.BlockchainSpec{
 		{
-			VMName:      "subnetevm",
-			Genesis:     genesis,
-			ChainConfig: []byte(`{"warp-api-enabled": true}`),
+			VMName:  "subnetevm",
+			Genesis: genesis,
+			// ChainConfig: []byte(`{"warp-api-enabled": true}`),
+			// for enabling debug-tracer use this chain configuration, set the key "pruning-enabled": false
+			ChainConfig: []byte(`{
+			"warp-api-enabled": true,
+			"eth-apis": ["eth", "eth-filter", "net", "web3", "internal-eth", "internal-blockchain",  "internal-transaction", "internal-account", "debug", "debug-tracer"],
+			"pruning-enabled": false
+			}`),
 			SubnetSpec: &network.SubnetSpec{
 				SubnetConfig: nil,
 				Participants: nodeNames,

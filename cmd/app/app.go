@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -24,9 +26,11 @@ import (
 )
 
 const (
-	pk = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	pk  = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	pk2 = "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e"
 
 	FlagBlockchainIDName  = "bc-id"
+	FlagBlockchainIDHex   = "bc-id-hex"
 	FlagTransferAppName   = "app" // bank transfer app address
 	FlagShowLogsAddrName  = "addr"
 	FlagErc20ContractName = "erc20"
@@ -34,6 +38,8 @@ const (
 	FlagRouterAddressName = "router"
 	FlagHomeAddressName   = "home"
 	FlagRemoteAddressName = "remote"
+	FlagCosmosChainIDName = "cosmos-bc-id"
+	FlagCosmosRecipient   = "cosmos-recipient"
 
 	defaultHashValue          = "0xSomeHash"
 	defaultBlockchainID       = "2m11W6dgpvs789P9cYCLDLTrY7ent858A75tq9k7ki9oVwb4oL"
@@ -43,6 +49,8 @@ const (
 	defaultHomeAddr           = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9" // token home address
 	defaultRemoteAddr         = "0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00" // token home address
 	defaultTokenRouterAddress = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9"
+	defaultCosmosChainID      = "ibc-1"
+	defaultCosmosRecipient    = "cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga"
 )
 
 // getClient returns an instance of the ethclient.Client
@@ -73,6 +81,65 @@ func appInstance(c *cli.Context) (*ics20banktransferapp.ICS20BankTransferApp, et
 	}
 
 	return app, client, nil
+}
+
+// sendDirectTransferCosmos sends a direct transfer to the transfer app
+func sendDirectTransferCosmos(
+	c *cli.Context,
+) error {
+	contract, client, err := appInstance(c)
+	if err != nil {
+		return err
+	}
+
+	pkey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	denom := "stake"
+	amount := big.NewInt(111)
+	receiver := common.HexToAddress(c.String(FlagShowLogsAddrName)).Bytes()
+	sourcePort := "transfer"
+	sourceChannel := "channel-0"
+	timeoutHeight := ics20banktransferapp.Height{
+		RevisionNumber: big.NewInt(1),
+		RevisionHeight: big.NewInt(100),
+	}
+	timeoutTimestamp := big.NewInt(time.Now().UnixNano())
+	messageID := [32]byte{}
+
+	tx, err := contract.Transfer(
+		auth,
+		denom,
+		amount,
+		receiver,
+		sourcePort,
+		sourceChannel,
+		timeoutHeight,
+		timeoutTimestamp,
+		messageID,
+	)
+	if err != nil {
+		return err
+	}
+	receipt, err := bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Transfer called: tx=%s, receipt=%d\n", tx.Hash().Hex(), receipt.Status)
+	return nil
 }
 
 // sendDirectToTransferApp sends a direct transfer to the transfer app
@@ -134,7 +201,7 @@ func sendDirectToTransferApp(
 		Data:               packedData,
 		TimeoutHeight: ics20banktransferapp.Height{
 			RevisionNumber: big.NewInt(1),
-			RevisionHeight: big.NewInt(10),
+			RevisionHeight: big.NewInt(100),
 		},
 		TimeoutTimestamp: big.NewInt(time.Now().UnixNano()),
 	}
@@ -238,6 +305,15 @@ func showAllLogs(c *cli.Context) error {
 		}
 	}
 
+	// sendIterator, err := contract.FilterPacketSent(filterOpts)
+	// if err == nil {
+	// 	defer sendIterator.Close()
+	// 	for sendIterator.Next() {
+	// 		event := sendIterator.Event
+	// 		fmt.Printf("PacketSent: Denom=%s, Amount=%s, Receiver=%s, SourcePort=%s, SourceChannel=%s, TimeoutHeight={RevisionNumber=%s, RevisionHeight=%s}, TimeoutTimestamp=%s, MessageID=%s\n", event.Denom, event.Amount.String(), string(event.Receiver), event.SourcePort, event.SourceChannel, event.TimeoutHeight.RevisionNumber.String(), event.TimeoutHeight.RevisionHeight.String(), event.TimeoutTimestamp.String(), hex.EncodeToString(event.MessageID[:]))
+	// 	}
+	// }
+
 	return nil
 }
 
@@ -308,6 +384,98 @@ func showTransferAppLogsByHash(c *cli.Context) error {
 			fmt.Printf("TokenRoutingFailed: Denom=%s, Reason=%s\n", eventTokenRouting.Denom, eventTokenRouting.Reason)
 		}
 	}
+
+	return nil
+}
+
+// showAllLogsTokenRemote prints all the logs from the ERC20TokenRemoteUpgradeable contract
+func showAllLogsTokenRemote(c *cli.Context) error {
+	client, err := getClient(c.String(FlagBlockchainIDName))
+	if err != nil {
+		return err
+	}
+
+	contractAddress := common.HexToAddress(c.String(FlagRemoteAddressName))
+	contract, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(contractAddress, client)
+	if err != nil {
+		return fmt.Errorf("failed to create contract instance: %v", err)
+	}
+
+	filterOpts := &bind.FilterOpts{
+		Start:   0,   // From block 0
+		End:     nil, // to the latest block
+		Context: context.Background(),
+	}
+
+	toCosmosTokensSentIterator, err := contract.FilterToCosmosTokensSent(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer toCosmosTokensSentIterator.Close()
+
+	for toCosmosTokensSentIterator.Next() {
+		event := toCosmosTokensSentIterator.Event
+		fmt.Printf("ToCosmosTokensSent: %+v\n", event)
+	}
+	if err := toCosmosTokensSentIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensCosmosWithdrawnIterator, err := contract.FilterTokensCosmosWithdrawn(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensCosmosWithdrawnIterator.Close()
+
+	for tokensCosmosWithdrawnIterator.Next() {
+		event := tokensCosmosWithdrawnIterator.Event
+		fmt.Printf("TokensCosmosWithdrawn: %+v\n", event)
+	}
+	if err := tokensCosmosWithdrawnIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensSentIterator, err := contract.FilterTokensSent(filterOpts, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensSentIterator.Close()
+
+	for tokensSentIterator.Next() {
+		event := tokensSentIterator.Event
+		fmt.Printf("TokensSent: %+v\n", event)
+	}
+	if err := tokensSentIterator.Error(); err != nil {
+		return err
+	}
+
+	tokensWithdrawnIterator, err := contract.FilterTokensWithdrawn(filterOpts, nil)
+	if err != nil {
+		return err
+	}
+	defer tokensWithdrawnIterator.Close()
+
+	for tokensWithdrawnIterator.Next() {
+		event := tokensWithdrawnIterator.Event
+		fmt.Printf("TokensWithdrawn: %+v\n", event)
+	}
+	if err := tokensWithdrawnIterator.Error(); err != nil {
+		return err
+	}
+
+	// logsMeIterator, err := contract.FilterLogsMe(filterOpts)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer logsMeIterator.Close()
+	//
+	// for logsMeIterator.Next() {
+	// 	event := logsMeIterator.Event
+	// 	fmt.Printf("LogsMe: %+v\n", event)
+	// }
+	// if err := logsMeIterator.Error(); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -473,6 +641,139 @@ func showAllLogsTokenHome(c *cli.Context) error {
 	return nil
 }
 
+// sendToCosmos sends tokens to Cosmos
+func sendToCosmos(c *cli.Context) error {
+	client, err := getClient("C")
+	if err != nil {
+		return err
+	}
+
+	privateKey, err := crypto.HexToECDSA(pk2)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	tokenHomeAddr := c.String(FlagHomeAddressName)
+	tokenRemoteAddr := c.String(FlagRemoteAddressName)
+	lndChainIDHex := c.String(FlagBlockchainIDHex)
+	cosmosChainID := c.String(FlagCosmosChainIDName)
+	cosmosRecipient := c.String(FlagCosmosRecipient)
+
+	tokenHomeAddress := common.HexToAddress(tokenHomeAddr)
+	tokenHome, err := erc20tokenhome.NewERC20TokenHome(tokenHomeAddress, client)
+	if err != nil {
+		return fmt.Errorf("failed to create token home instance: %w", err)
+	}
+
+	destinationCosmosRecipient := []byte(cosmosRecipient)
+	var destinationCosmosBlockchainID, destinationBlockchainID [32]byte
+	copy(destinationCosmosBlockchainID[:], cosmosChainID)
+
+	bytes, err := hex.DecodeString(lndChainIDHex)
+	if err != nil {
+		return fmt.Errorf("failed to decode hex string: %w", err)
+	}
+	copy(destinationBlockchainID[:], bytes)
+
+	tokenRemoteAddress := common.HexToAddress(tokenRemoteAddr)
+
+	input := erc20tokenhome.ToCosmosSendTokensInput{
+		DestinationBlockchainID:            destinationBlockchainID,
+		DestinationTokenTransferrerAddress: tokenRemoteAddress,
+		DestinationCosmosRecipient:         destinationCosmosRecipient,
+		DestinationCosmosBlockchainID:      destinationCosmosBlockchainID,
+		PrimaryFeeTokenAddress:             common.Address{},
+		PrimaryFee:                         big.NewInt(0),
+		SecondaryFee:                       big.NewInt(0),
+		RequiredGasLimit:                   big.NewInt(1000000),
+		MultiHopFallback:                   common.Address{},
+	}
+
+	tx, err := tokenHome.ToCosmosSend(auth, input, big.NewInt(1111))
+	if err != nil {
+		return fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	receipt, err := bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for transaction to be mined: %w", err)
+	}
+
+	fmt.Printf("Transaction sent: %s, receipt status: %d\n", tx.Hash().Hex(), receipt.Status)
+	return nil
+}
+
+// fundAddress funds an address with 1 native token
+func fundAddress(c *cli.Context) error {
+	client, err := getClient(c.String(FlagBlockchainIDName))
+	if err != nil {
+		return err
+	}
+
+	pkey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	// Get the nonce for the sender address
+	nonce, err := client.NonceAt(context.Background(), auth.From, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get nonce: %w", err)
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
+
+	toAddress := common.HexToAddress(c.String(FlagShowLogsAddrName))
+	value := big.NewInt(1e18) // 1 ETH in wei
+
+	gasLimit := uint64(21000) // in units
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to suggest gas price: %w", err)
+	}
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    auth.Nonce.Uint64(),
+		To:       &toAddress,
+		Value:    value,
+		Gas:      gasLimit,
+		GasPrice: gasPrice,
+		Data:     nil,
+	})
+
+	signedTx, err := auth.Signer(auth.From, tx)
+	if err != nil {
+		return fmt.Errorf("failed to sign transaction: %w", err)
+	}
+
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	fmt.Printf("Transaction sent: %s\n", signedTx.Hash().Hex())
+	return nil
+}
+
 func main() {
 	// Load .env file
 	err := godotenv.Load()
@@ -482,17 +783,30 @@ func main() {
 
 	// Get values from environment variables or use default values
 	blockchainID := getEnv("BLOCKCHAIN_ID", defaultBlockchainID)
-	transferAppAddr := getEnv("APP_ADDRESS", defaultTransferAppAddress)
+	transferAppAddr := getEnv("TRANSFER_APP_ADDRESS", defaultTransferAppAddress)
 	showLogsAddr := getEnv("SHOW_LOGS_ADDR", defaultShowLogsAddr)
 	erc20Contract := getEnv("ERC20_CONTRACT_ADDRESS", defaultErc20Contract)
 	routerAddress := getEnv("TOKEN_ROUTER_ADDRESS", defaultTokenRouterAddress)
 	homeAddress := getEnv("TOKEN_HOME_ADDRESS", defaultHomeAddr)
 	remoteAddress := getEnv("TOKEN_REMOTE_ADDRESS", defaultRemoteAddr)
+	lndBlockchainIDHex := getEnv("BLOCKCHAIN_ID_HEX", "")
 
 	// Define flags
 	FlagBlockchainID := cli.StringFlag{
 		Name:  FlagBlockchainIDName,
 		Value: blockchainID,
+	}
+	FlagBlockchainIDHex := cli.StringFlag{
+		Name:  FlagBlockchainIDHex,
+		Value: lndBlockchainIDHex,
+	}
+	FlagCosmosChainID := cli.StringFlag{
+		Name:  FlagCosmosChainIDName,
+		Value: defaultCosmosChainID,
+	}
+	FlagCosmosRecipient := cli.StringFlag{
+		Name:  FlagCosmosRecipient,
+		Value: defaultCosmosRecipient,
 	}
 	FlagTransferApp := cli.StringFlag{
 		Name:  FlagTransferAppName,
@@ -536,6 +850,9 @@ func main() {
 		FlagRouterAddress,
 		FlagRemoteAddress,
 		FlagHomeAddress,
+		FlagBlockchainIDHex,
+		FlagCosmosChainID,
+		FlagCosmosRecipient,
 	}
 
 	app.Commands = []cli.Command{
@@ -575,6 +892,13 @@ func main() {
 			Action:    sendDirectToTransferApp,
 		},
 		{
+			Flags:     []cli.Flag{FlagBlockchainID, FlagTransferApp, FlagRouterAddress, FlagAddr},
+			Name:      "send-direct-transfer-cosmos",
+			ShortName: "tc",
+			Usage:     "Send a direct transfer from C-Chain to cosmos",
+			Action:    sendDirectTransferCosmos,
+		},
+		{
 			Flags:     []cli.Flag{FlagBlockchainID, FlagHomeAddress},
 			Name:      "get-token-home-events",
 			ShortName: "g",
@@ -587,6 +911,27 @@ func main() {
 			ShortName: "r",
 			Usage:     "Register remote at the HomeToken",
 			Action:    registerRemote,
+		},
+		{
+			Flags:     []cli.Flag{FlagBlockchainID, FlagAddr},
+			Name:      "fund-address",
+			ShortName: "f",
+			Usage:     "Funds an address with 1 native token",
+			Action:    fundAddress,
+		},
+		{
+			Flags:     []cli.Flag{FlagBlockchainIDHex, FlagRemoteAddress, FlagHomeAddress, FlagCosmosChainID, FlagCosmosRecipient},
+			Name:      "send-to-cosmos",
+			ShortName: "sc",
+			Usage:     "Send tokens to Cosmos",
+			Action:    sendToCosmos,
+		},
+		{
+			Flags:     []cli.Flag{FlagBlockchainID, FlagRemoteAddress},
+			Name:      "show-all-logs-remote",
+			ShortName: "sr",
+			Usage:     "Send tokens to Cosmos",
+			Action:    showAllLogsTokenRemote,
 		},
 	}
 

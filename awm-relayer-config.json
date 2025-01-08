@@ -49,15 +49,15 @@
     },
     {
       "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
-      "blockchain-id": "2u8XngYzkCbpBjB4khNFi3k5vKqnPEoBfYJeASqsfWyCPcdQuV",
+      "blockchain-id": "2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r",
       "vm": "evm",
       "rpc-endpoint": {
-        "base-url": "http://127.0.0.1:9650/ext/bc/2u8XngYzkCbpBjB4khNFi3k5vKqnPEoBfYJeASqsfWyCPcdQuV/rpc",
+        "base-url": "http://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/rpc",
         "query-parameters": null,
         "http-headers": null
       },
       "ws-endpoint": {
-        "base-url": "ws://127.0.0.1:9650/ext/bc/2u8XngYzkCbpBjB4khNFi3k5vKqnPEoBfYJeASqsfWyCPcdQuV/ws",
+        "base-url": "ws://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/ws",
         "query-parameters": null,
         "http-headers": null
       },
@@ -92,20 +92,20 @@
       },
       "kms-key-id": "",
       "kms-aws-region": "",
-      "account-private-key": "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+      "account-private-key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     },
     {
       "subnet-id": "2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c",
-      "blockchain-id": "2u8XngYzkCbpBjB4khNFi3k5vKqnPEoBfYJeASqsfWyCPcdQuV",
+      "blockchain-id": "2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r",
       "vm": "evm",
       "rpc-endpoint": {
-        "base-url": "http://127.0.0.1:9650/ext/bc/2u8XngYzkCbpBjB4khNFi3k5vKqnPEoBfYJeASqsfWyCPcdQuV/rpc",
+        "base-url": "http://127.0.0.1:9650/ext/bc/2mKoKcbepyU22VwtevibAB4AoD6GwgELqy5x38avG94YpK9F4r/rpc",
         "query-parameters": null,
         "http-headers": null
       },
       "kms-key-id": "",
       "kms-aws-region": "",
-      "account-private-key": "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+      "account-private-key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     }
   ],
   "process-missed-blocks": false,
