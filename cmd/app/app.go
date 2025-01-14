@@ -699,7 +699,7 @@ func sendToCosmos(c *cli.Context) error {
 		MultiHopFallback:                   common.Address{},
 	}
 
-	tx, err := tokenHome.ToCosmosSend(auth, input, big.NewInt(1111))
+	tx, err := tokenHome.ToCosmosSend(auth, input, big.NewInt(1009000))
 	if err != nil {
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
