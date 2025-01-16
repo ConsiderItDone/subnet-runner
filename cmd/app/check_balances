@@ -26,7 +26,7 @@ if [ -z "$SENDER_COSMOS_ADDRESS" ] || [ -z "$EVM_RECEIVER_ADDRESS" ]; then
 fi
 
 echo "Checking Cosmos address balance: $SENDER_COSMOS_ADDRESS"
-"$SIMD_PATH" q bank balances "$SENDER_COSMOS_ADDRESS"
+"$SIMD_PATH" q bank balance "$SENDER_COSMOS_ADDRESS" stake
 
-echo -e "\nChecking ERC20 address balance: $EVM_RECEIVER_ADDRESS"
+echo -e "\nChecking ERC20 address balance in the C-Chain: $EVM_RECEIVER_ADDRESS"
 go run app.go balance-erc20 --bc-id C --addr "$EVM_RECEIVER_ADDRESS"

@@ -29,17 +29,18 @@ const (
 	pk  = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027" // base pk
 	pk2 = "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e" // used for sending to cosmos
 
-	FlagBlockchainIDName  = "bc-id"
-	FlagBlockchainIDHex   = "bc-id-hex"
-	FlagTransferAppName   = "app" // bank transfer app address
-	FlagShowLogsAddrName  = "addr"
-	FlagErc20ContractName = "erc20"
-	FlagHashName          = "hash"
-	FlagRouterAddressName = "router"
-	FlagHomeAddressName   = "home"
-	FlagRemoteAddressName = "remote"
-	FlagCosmosChainIDName = "cosmos-bc-id"
-	FlagCosmosRecipient   = "cosmos-recipient"
+	FlagBlockchainIDName    = "bc-id"
+	FlagBlockchainIDHex     = "bc-id-hex"
+	FlagTransferAppName     = "app" // bank transfer app address
+	FlagShowLogsAddrName    = "addr"
+	FlagErc20ContractName   = "erc20"
+	FlagHashName            = "hash"
+	FlagRouterAddressName   = "router"
+	FlagHomeAddressName     = "home"
+	FlagRemoteAddressName   = "remote"
+	FlagCosmosChainIDName   = "cosmos-bc-id"
+	FlagCosmosRecipientName = "cosmos-recipient"
+	FlagTokensAmountName    = "amount"
 
 	defaultHashValue          = "0xSomeHash"
 	defaultBlockchainID       = "2m11W6dgpvs789P9cYCLDLTrY7ent858A75tq9k7ki9oVwb4oL"
@@ -51,6 +52,7 @@ const (
 	defaultTokenRouterAddress = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9"
 	defaultCosmosChainID      = "ibc-1"
 	defaultCosmosRecipient    = "cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga"
+	defaultAmount             = "1000000"
 )
 
 // getClient returns an instance of the ethclient.Client
@@ -667,7 +669,7 @@ func sendToCosmos(c *cli.Context) error {
 	tokenRemoteAddr := c.String(FlagRemoteAddressName)
 	lndChainIDHex := c.String(FlagBlockchainIDHex)
 	cosmosChainID := c.String(FlagCosmosChainIDName)
-	cosmosRecipient := c.String(FlagCosmosRecipient)
+	cosmosRecipient := c.String(FlagCosmosRecipientName)
 
 	tokenHomeAddress := common.HexToAddress(tokenHomeAddr)
 	tokenHome, err := erc20tokenhome.NewERC20TokenHome(tokenHomeAddress, client)
@@ -699,7 +701,7 @@ func sendToCosmos(c *cli.Context) error {
 		MultiHopFallback:                   common.Address{},
 	}
 
-	tx, err := tokenHome.ToCosmosSend(auth, input, big.NewInt(1009000))
+	tx, err := tokenHome.ToCosmosSend(auth, input, big.NewInt(c.Int64(FlagTokensAmountName)))
 	if err != nil {
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
@@ -805,7 +807,7 @@ func main() {
 		Value: defaultCosmosChainID,
 	}
 	FlagCosmosRecipient := cli.StringFlag{
-		Name:  FlagCosmosRecipient,
+		Name:  FlagCosmosRecipientName,
 		Value: defaultCosmosRecipient,
 	}
 	FlagTransferApp := cli.StringFlag{
@@ -837,6 +839,10 @@ func main() {
 		Name:  FlagRemoteAddressName,
 		Value: remoteAddress,
 	}
+	FlagTokensAmount := cli.StringFlag{
+		Name:  FlagTokensAmountName,
+		Value: defaultAmount,
+	}
 
 	app := cli.NewApp()
 	app.Name = "app"
@@ -853,6 +859,7 @@ func main() {
 		FlagBlockchainIDHex,
 		FlagCosmosChainID,
 		FlagCosmosRecipient,
+		FlagTokensAmount,
 	}
 
 	app.Commands = []cli.Command{
@@ -920,7 +927,14 @@ func main() {
 			Action:    fundAddress,
 		},
 		{
-			Flags:     []cli.Flag{FlagBlockchainIDHex, FlagRemoteAddress, FlagHomeAddress, FlagCosmosChainID, FlagCosmosRecipient},
+			Flags: []cli.Flag{
+				FlagBlockchainIDHex,
+				FlagRemoteAddress,
+				FlagHomeAddress,
+				FlagCosmosChainID,
+				FlagCosmosRecipient,
+				FlagTokensAmount,
+			},
 			Name:      "send-to-cosmos",
 			ShortName: "sc",
 			Usage:     "Send tokens to Cosmos",
