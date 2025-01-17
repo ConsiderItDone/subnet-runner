@@ -1,11 +1,14 @@
 #!/bin/bash
 
+# Source the addresses from the external file
+source ./addresses
+
 # Run the register-remote command
 go run app.go register-remote
 
 # Fund the address
-go run app.go fund-address --bc-id C --addr 0x976EA74026E726554dB657fA54763abd0C3a0aa9
-go run app.go balance-native --bc-id C --addr 0x976EA74026E726554dB657fA54763abd0C3a0aa9
+go run app.go fund-address --bc-id C --addr $DEFAULT_EVM_RECEIVER_ADDRESS
+go run app.go balance-native --bc-id C --addr  $DEFAULT_EVM_RECEIVER_ADDRESS
 
 # Check balances
-./check_balances cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga 0x976EA74026E726554dB657fA54763abd0C3a0aa9
+./check_balances $DEFAULT_SENDER_COSMOS_ADDRESS $DEFAULT_EVM_RECEIVER_ADDRESS

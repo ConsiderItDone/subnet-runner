@@ -3,9 +3,8 @@
 # Path to simd binary
 SIMD_PATH=~/src/citd/ibc-go-strangelove-private/build/simd
 
-# Default addresses
-DEFAULT_SENDER_COSMOS_ADDRESS="cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga"
-DEFAULT_EVM_RECEIVER_ADDRESS="0x976EA74026E726554dB657fA54763abd0C3a0aa9"
+# Source the addresses from the external file
+source ./.addresses
 
 # Check number of arguments
 if [ "$#" -ne 2 ]; then
