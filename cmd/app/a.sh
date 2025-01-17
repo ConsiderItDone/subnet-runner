@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Source the addresses from the external file
-source ./addresses
+source ./.addresses
 
 # Run the register-remote command
 go run app.go register-remote

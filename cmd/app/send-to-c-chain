@@ -4,7 +4,7 @@
 source ./.addresses
 
 if [[ $# -eq 1 && $1 =~ ^[0-9]+$ ]]; then
-  rly tx transfer ibc-1 99999 "${1}stake" $EVM_RECEIVER_ADDRESS channel-0 --path demo --debug --memo "memo-test"
+  rly tx transfer ibc-1 99999 "${1}stake" $DEFAULT_EVM_RECEIVER_ADDRESS channel-0 --path demo --debug --memo "memo-test"
 else
-  rly tx transfer ibc-1 99999 100000000stake $EVM_RECEIVER_ADDRESS channel-0 --path demo --debug --memo "memo-test"
+  rly tx transfer ibc-1 99999 100000000stake $DEFAULT_EVM_RECEIVER_ADDRESS channel-0 --path demo --debug --memo "memo-test"
 fi
