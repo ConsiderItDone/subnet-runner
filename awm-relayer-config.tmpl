@@ -1,0 +1,113 @@
+{
+  "log-level": "info",
+  "storage-location": "./awm-relayer-storage",
+  "redis-url": "",
+  "api-port": 0,
+  "metrics-port": 9091,
+  "p-chain-api": {
+    "base-url": "http://127.0.0.1:9650",
+    "query-parameters": {},
+    "http-headers": null
+  },
+  "info-api": {
+    "base-url": "http://127.0.0.1:9650",
+    "query-parameters": {},
+    "http-headers": null
+  },
+  "source-blockchains": [
+    {
+      "subnet-id": "11111111111111111111111111111111LpoYY",
+      "blockchain-id": "{{.CChainBlockchainID}}",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/{{.CChainBlockchainID}}/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "ws-endpoint": {
+        "base-url": "ws://127.0.0.1:9650/ext/bc/{{.CChainBlockchainID}}/ws",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "message-contracts": {
+        "0x0000000000000000000000000000000000000000": {
+          "message-format": "off-chain-registry",
+          "settings": {
+            "teleporter-registry-address": "{{.TeleporterRegistryAddress}}"
+          }
+        },
+        "{{.TeleporterMessengerAddress}}": {
+          "message-format": "teleporter",
+          "settings": {
+            "reward-address": "0xcD5b19462E745DDAf97a60b99563a2f8206c9E61"
+          }
+        }
+      },
+      "supported-destinations": null,
+      "process-historical-blocks-from-height": 0,
+      "allowed-origin-sender-addresses": null
+    },
+    {
+      "subnet-id": "{{.LndSubnetID}}",
+      "blockchain-id": "{{.LndBlockchainID}}",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/{{.LndBlockchainID}}/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "ws-endpoint": {
+        "base-url": "ws://127.0.0.1:9650/ext/bc/{{.LndBlockchainID}}/ws",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "message-contracts": {
+        "0x0000000000000000000000000000000000000000": {
+          "message-format": "off-chain-registry",
+          "settings": {
+            "teleporter-registry-address": "{{.TeleporterRegistryAddress}}"
+          }
+        },
+        "{{.TeleporterMessengerAddress}}": {
+          "message-format": "teleporter",
+          "settings": {
+            "reward-address": "0xcD5b19462E745DDAf97a60b99563a2f8206c9E61"
+          }
+        }
+      },
+      "supported-destinations": null,
+      "process-historical-blocks-from-height": 0,
+      "allowed-origin-sender-addresses": null
+    }
+  ],
+  "destination-blockchains": [
+    {
+      "subnet-id": "11111111111111111111111111111111LpoYY",
+      "blockchain-id": "{{.CChainBlockchainID}}",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/{{.CChainBlockchainID}}/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "kms-key-id": "",
+      "kms-aws-region": "",
+      "account-private-key": "{{.AccountPrivateKey}}"
+    },
+    {
+      "subnet-id": "{{.LndSubnetID}}",
+      "blockchain-id": "{{.LndBlockchainID}}",
+      "vm": "evm",
+      "rpc-endpoint": {
+        "base-url": "http://127.0.0.1:9650/ext/bc/{{.LndBlockchainID}}/rpc",
+        "query-parameters": null,
+        "http-headers": null
+      },
+      "kms-key-id": "",
+      "kms-aws-region": "",
+      "account-private-key": "{{.AccountPrivateKey}}"
+    }
+  ],
+  "process-missed-blocks": false,
+  "manual-warp-messages": null
+}

@@ -17,7 +17,7 @@ import (
 var (
 	FlagRPC = cli.StringFlag{
 		Name:  "rpc",
-		Value: "http://127.0.0.1:9650/ext/bc/wvREBRwwXmrXPFYqo6oS1nKEQNTSsCqdhumt42bya7CvbyYgL/rpc",
+		Value: "http://127.0.0.1:9650/ext/bc/GKvUzzyNDQHYTWLZT82tAmVyRbshcsvX87Ghv4AvHc2seVVSn/rpc",
 	}
 	FlagBank = cli.StringFlag{
 		Name:  "bank",
@@ -25,7 +25,8 @@ var (
 	}
 
 	FlagDenom = cli.StringFlag{
-		Name: "denom",
+		Name:  "denom",
+		Value: "transfer/channel-0/stake",
 	}
 
 	FlagHash = cli.StringFlag{
@@ -58,17 +59,27 @@ func bankApp(c *cli.Context) (*ics20bank.ICS20Bank, *ethclient.Client, error) {
 }
 
 func balanceOf(c *cli.Context) error {
-	bank, _, err := bankApp(c)
+	bank, eth, err := bankApp(c)
 	if err != nil {
 		return err
 	}
 
-	balance, err := bank.BalanceOf(nil, common.HexToAddress(c.String("addr")), c.String("denom"))
+	address := common.HexToAddress(c.String("addr"))
+
+	balance, err := bank.BalanceOf(nil, address, c.String("denom"))
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Balance: %s\n", balance)
+	fmt.Printf("Bank balance: %s\n", balance)
+
+	// Get the balance
+	balance, err = eth.BalanceAt(context.Background(), address, nil)
+	if err != nil {
+		log.Fatalf("Failed to get balance: %v", err)
+	}
+	fmt.Printf("EVM balance of %s: %s wei\n", address.Hex(), balance.String())
+
 	return nil
 }
 

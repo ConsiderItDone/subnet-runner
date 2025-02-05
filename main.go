@@ -24,10 +24,12 @@ import (
 
 	"subnet-runner/contracts/ics20/ics20bank"
 	"subnet-runner/contracts/ics20/ics20transferer"
+	"subnet-runner/internal"
 )
 
 const (
 	healthyTimeout = 2 * time.Minute
+	pk             = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 )
 
 var (
@@ -132,7 +134,7 @@ func copy(src, dst string) (int64, error) {
 }
 
 func doICS20(log logging.Logger, urls []string) error {
-	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return err
 	}
@@ -214,11 +216,11 @@ func doICS20(log logging.Logger, urls []string) error {
 	}
 	log.Info("ics20transferer.SetChannelEscrowAddresses", zap.String("addr", auth.From.Hex()), zap.String("port", "transfer"), zap.String("block", setChannelEscrowAddressesRe.BlockNumber.String()))
 
-	bintPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
+	bindPortTx, err := ics20transferer.BindPort(auth, ibcAddr, "transfer")
 	if err != nil {
 		return err
 	}
-	bintPortRe, err := bind.WaitMined(context.Background(), client, bintPortTx)
+	bintPortRe, err := bind.WaitMined(context.Background(), client, bindPortTx)
 	if err != nil {
 		return err
 	}
@@ -228,7 +230,7 @@ func doICS20(log logging.Logger, urls []string) error {
 }
 
 func doTx(log logging.Logger, urls []string) error {
-	pkey, err := crypto.HexToECDSA("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+	pkey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		return err
 	}
@@ -283,14 +285,24 @@ func doTx(log logging.Logger, urls []string) error {
 
 func run(log logging.Logger, binaryPath string, workDir string) error {
 	// Create the network
-	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath))
+	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath), 99999)
 	if err != nil {
 		return err
 	}
 
 	nwConfig.Flags["log-level"] = "INFO"
 
-	nw, err := local.NewNetwork(log, nwConfig, workDir, "", true, false, true)
+	nw, err := local.NewNetwork(
+		log,
+		nwConfig,
+		workDir,
+		"",
+		workDir,
+		true,
+		false,
+		true,
+		pk,
+	)
 	if err != nil {
 		return err
 	}
@@ -338,6 +350,12 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 			VMName:      "subnetevm",
 			Genesis:     genesis,
 			ChainConfig: []byte(`{"warp-api-enabled": true}`),
+			// for enabling debug-tracer use this chain configuration, set the key "pruning-enabled": false
+			// ChainConfig: []byte(`{
+			// "warp-api-enabled": true,
+			// "eth-apis": ["eth", "eth-filter", "net", "web3", "internal-eth", "internal-blockchain",  "internal-transaction", "internal-account", "debug", "debug-tracer"],
+			// "pruning-enabled": false
+			// }`),
 			SubnetSpec: &network.SubnetSpec{
 				SubnetConfig: nil,
 				Participants: nodeNames,
@@ -365,13 +383,12 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 
 	log.Info("Network will run until you CTRL + C to exit...")
 
-	if err := doICS20(log, rpcUrls); err != nil {
-		log.Error("can't deploy ICS20", zap.Error(err))
+	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
+		log.Error("DeploySubnetContracts", zap.Error(err))
 		return err
 	}
 
 	for {
-		time.Sleep(5 * time.Second)
 		select {
 		case <-closedOnShutdownCh:
 			return nil
@@ -381,6 +398,4 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 			}
 		}
 	}
-
-	return nil
 }
