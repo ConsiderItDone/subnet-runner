@@ -51,7 +51,7 @@ const (
 	defaultRemoteAddr         = "0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00" // token home address
 	defaultTokenRouterAddress = "0x5DB9A7629912EBF95876228C24A848de0bfB43A9"
 	defaultCosmosChainID      = "ibc-1"
-	defaultCosmosRecipient    = "cosmos1t36cnszflpzq6kvthpegafpqy9tv05pr9n7nga"
+	defaultCosmosRecipient    = ""
 	defaultAmount             = "1000000"
 )
 

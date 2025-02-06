@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Source the addresses from the external file
+source ./.addresses
+
 if [[ $# -eq 1 && $1 =~ ^[0-9]+$ ]]; then
-  go run app.go send-to-cosmos --amount "$1"
+  go run app.go send-to-cosmos --cosmos-recipient $DEFAULT_SENDER_COSMOS_ADDRESS --amount "$1"
 else
-  go run app.go send-to-cosmos
+  go run app.go send-to-cosmos --cosmos-recipient $DEFAULT_SENDER_COSMOS_ADDRESS
 fi

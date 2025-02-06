@@ -6,7 +6,7 @@ AWM_CONFIG_FILE="./awm-relayer-config.json"
 RELAYER_CONFIG_FILE="/Users/vn/.relayer/config/config.yaml"
 
 # Read values from awm-relayer-config.json
-SUBNET_ID="256Y6fkZnXSaXykwqaH3PzBpbL7FYbQQDirpH7hayeVkHXCM69"
+SUBNET_ID="2BXzNsSTSHBEHafhrexxnffUu3GATHpddEQuyrDJPcgzrK3t6c"
 
 BLOCKCHAIN_ID=$(jq -r --arg SUBNET_ID "$SUBNET_ID" '.["source-blockchains"][] | select(.["subnet-id"] == $SUBNET_ID) | .["blockchain-id"]' $AWM_CONFIG_FILE)
 BASE_URL=$(jq -r --arg SUBNET_ID "$SUBNET_ID" '.["source-blockchains"][] | select(.["subnet-id"] == $SUBNET_ID) | .["rpc-endpoint"]["base-url"]' $AWM_CONFIG_FILE)
