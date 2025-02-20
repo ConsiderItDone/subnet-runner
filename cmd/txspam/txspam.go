@@ -121,7 +121,7 @@ func txSpam(c *cli.Context) error {
 				return err
 			}
 			// swap pk1 and pk2
-			pk1, pk2 = pk2, pk1
+			// pk1, pk2 = pk2, pk1
 		}
 	}
 }
