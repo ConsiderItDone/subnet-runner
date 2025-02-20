@@ -95,6 +95,15 @@ func txSpam(c *cli.Context) error {
 	if pk1 == pk2 {
 		return fmt.Errorf("private keys must be different")
 	}
+	// remove 0x prefix
+	if pk1[:2] == "0x" {
+		pk1 = pk1[2:]
+	}
+
+	if pk2[:2] == "0x" {
+		pk2 = pk2[2:]
+	}
+
 	delay := c.Uint("delay")
 	if delay < 1 {
 		return fmt.Errorf("delay must be greater than 0")
