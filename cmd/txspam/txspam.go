@@ -38,7 +38,7 @@ var (
 	}
 )
 var closedOnShutdownCh = make(chan struct{})
-var log *zap.SugaredLogger
+var log *zap.Logger
 
 func main() {
 
@@ -47,9 +47,8 @@ func main() {
 	config.EncoderConfig.TimeKey = "time"
 	config.EncoderConfig.CallerKey = "" // Disable caller key
 
-	logger, _ := config.Build()
-	defer logger.Sync()
-	log = logger.Sugar()
+	log, _ = config.Build()
+	defer log.Sync()
 
 	app := &cli.App{
 		Name:      "txspam",
@@ -78,7 +77,7 @@ func main() {
 	go handleShutdown()
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error running app", zap.Error(err))
 	}
 }
 
@@ -173,7 +172,6 @@ func doTx(pkFrom, pkTo, rpc string) error {
 		return err
 	}
 
-	log.Info("transaction hash", zap.String("hash", signedTx.Hash().Hex()))
 	err = client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		return err
