@@ -45,66 +45,71 @@ func DeploySubnetContracts(
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	clientLnd, chainIDLnd, authLnd, rpcClientLnd, err := initializeClientAndAuth(urls[0], ctx, pkey)
+	clientLnd, chainIDLnd, authLnd, _, err := initializeClientAndAuth(urls[0], ctx, pkey)
 	if err != nil {
 		return err
 	}
-	defer rpcClientLnd.Close()
 
-	// Deploy teleporterMessenger contract
-	tpMessengerAddressLnd, tpRegistryAddressLnd, err := deployTeleporter(ctx, log, clientLnd, rpcClientLnd, authLnd, pkey, chainIDLnd)
-	if err != nil {
-		return err
-	}
-	log.Info("Teleporter contracts deployed", zap.String("messenger", tpMessengerAddressLnd.Hex()), zap.String("registry", tpRegistryAddressLnd.Hex()))
-
-	// Deploy TokenRouter
-	_, routerTx, tokenRouter, err := tokenrouter.DeployTokenRouter(authLnd, clientLnd, authLnd.From)
-	if err != nil {
-		return fmt.Errorf("failed to deploy TokenRouter: %w", err)
-	}
-	routerAddr, err := bind.WaitDeployed(ctx, clientLnd, routerTx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for TokenRouter deployment: %w", err)
-	}
-	log.Info("TokenRouter deployed", zap.String("address", routerAddr.Hex()))
-
-	// Deploy ICS20BankTransferApp
-	_, transferTx, bankTransfer, err := ics20banktransferapp.DeployICS20BankTransferApp(
-		authLnd,
-		clientLnd,
-		ibcAddr,
-		authLnd.From,
-		routerAddr,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to deploy ICS20BankTransferApp: %w", err)
-	}
-	transferAddr, err := bind.WaitDeployed(ctx, clientLnd, transferTx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for ICS20BankTransferApp deployment: %w", err)
-	}
-	log.Info("ICS20BankTransferApp deployed", zap.String("address", transferAddr.Hex()))
-
-	// Deploy remoteToken
-	_, remoteTokenTx, remoteToken, err := erc20tokenremoteupgradeable.DeployERC20TokenRemoteUpgradeable(
-		authLnd,
-		clientLnd,
-		0,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to deploy ERC20TokenRemoteUpgradeable: %w", err)
-	}
-	remoteTokenAddr, err := bind.WaitDeployed(ctx, clientLnd, remoteTokenTx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for ERC20TokenRemoteUpgradeable deployment: %w", err)
-	}
-	log.Info("ERC20TokenRemoteUpgradeable deployed", zap.String("address", remoteTokenAddr.Hex()))
-
-	// Setup escrow addresses for ICS20BankTransferApp
-	if err := setupTransferApp(ctx, &clientLnd, authLnd, bankTransfer, ibcAddr, log); err != nil {
-		return fmt.Errorf("failed to setup transfer app: %w", err)
-	}
+	//clientLnd, chainIDLnd, authLnd, rpcClientLnd, err := initializeClientAndAuth(urls[0], ctx, pkey)
+	//if err != nil {
+	//	return err
+	//}
+	//defer rpcClientLnd.Close()
+	//
+	//// Deploy teleporterMessenger contract
+	//tpMessengerAddressLnd, tpRegistryAddressLnd, err := deployTeleporter(ctx, log, clientLnd, rpcClientLnd, authLnd, pkey, chainIDLnd)
+	//if err != nil {
+	//	return err
+	//}
+	//log.Info("Teleporter contracts deployed", zap.String("messenger", tpMessengerAddressLnd.Hex()), zap.String("registry", tpRegistryAddressLnd.Hex()))
+	//
+	//// Deploy TokenRouter
+	//_, routerTx, tokenRouter, err := tokenrouter.DeployTokenRouter(authLnd, clientLnd, authLnd.From)
+	//if err != nil {
+	//	return fmt.Errorf("failed to deploy TokenRouter: %w", err)
+	//}
+	//routerAddr, err := bind.WaitDeployed(ctx, clientLnd, routerTx)
+	//if err != nil {
+	//	return fmt.Errorf("failed waiting for TokenRouter deployment: %w", err)
+	//}
+	//log.Info("TokenRouter deployed", zap.String("address", routerAddr.Hex()))
+	//
+	//// Deploy ICS20BankTransferApp
+	//_, transferTx, bankTransfer, err := ics20banktransferapp.DeployICS20BankTransferApp(
+	//	authLnd,
+	//	clientLnd,
+	//	ibcAddr,
+	//	authLnd.From,
+	//	routerAddr,
+	//)
+	//if err != nil {
+	//	return fmt.Errorf("failed to deploy ICS20BankTransferApp: %w", err)
+	//}
+	//transferAddr, err := bind.WaitDeployed(ctx, clientLnd, transferTx)
+	//if err != nil {
+	//	return fmt.Errorf("failed waiting for ICS20BankTransferApp deployment: %w", err)
+	//}
+	//log.Info("ICS20BankTransferApp deployed", zap.String("address", transferAddr.Hex()))
+	//
+	//// Deploy remoteToken
+	//_, remoteTokenTx, remoteToken, err := erc20tokenremoteupgradeable.DeployERC20TokenRemoteUpgradeable(
+	//	authLnd,
+	//	clientLnd,
+	//	0,
+	//)
+	//if err != nil {
+	//	return fmt.Errorf("failed to deploy ERC20TokenRemoteUpgradeable: %w", err)
+	//}
+	//remoteTokenAddr, err := bind.WaitDeployed(ctx, clientLnd, remoteTokenTx)
+	//if err != nil {
+	//	return fmt.Errorf("failed waiting for ERC20TokenRemoteUpgradeable deployment: %w", err)
+	//}
+	//log.Info("ERC20TokenRemoteUpgradeable deployed", zap.String("address", remoteTokenAddr.Hex()))
+	//
+	//// Setup escrow addresses for ICS20BankTransferApp
+	//if err := setupTransferApp(ctx, &clientLnd, authLnd, bankTransfer, ibcAddr, log); err != nil {
+	//	return fmt.Errorf("failed to setup transfer app: %w", err)
+	//}
 
 	// Deploy home token at c-chain
 	CChainURL := baseURL + "/ext/bc/C/rpc"
@@ -115,12 +120,31 @@ func DeploySubnetContracts(
 	defer rpcClientC.Close()
 
 	// Deploy teleporterMessenger contract
-	tpMessengerAddressC, tpRegistryAddressC, err := deployTeleporter(ctx, log, clientC, rpcClientC, authC, pkey, chainIDC)
-	if err != nil {
-		return err
-	}
-	log.Info("Teleporter contracts deployed to C-chain", zap.String("messenger", tpMessengerAddressC.Hex()), zap.String("registry", tpRegistryAddressC.Hex()))
+	//tpMessengerAddressC, tpRegistryAddressC, err := deployTeleporter(ctx, log, clientC, rpcClientC, authC, pkey, chainIDC)
+	//if err != nil {
+	//	return err
+	//}
+	//log.Info("Teleporter contracts deployed to C-chain", zap.String("messenger", tpMessengerAddressC.Hex()), zap.String("registry", tpRegistryAddressC.Hex()))
 
+	tpMessengerAddressLnd := common.HexToAddress("0x1411Cc804d13231Ce66217Eb296a09d3C10ce785")
+	tpRegistryAddressLnd := common.HexToAddress("0xa3B8378e66E03222f82164b86D4f704D6ECc57A7")
+	routerAddr := common.HexToAddress("0x466B832314df73124a5A20dBCBa71af5D4a2907D")
+	transferAddr := common.HexToAddress("0xB3bD638076381b7871306f489d43FEf58de1ba71")
+	remoteTokenAddr := common.HexToAddress("0xd8909d0E7561d433D815f23423f14cE58301c432")
+
+	remoteToken, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(remoteTokenAddr, clientLnd)
+	if err != nil {
+		return fmt.Errorf("failed to get ERC20TokenRemoteUpgradeable instance: %w", err)
+	}
+
+	tokenRouter, err := tokenrouter.NewTokenRouter(routerAddr, clientLnd)
+	if err != nil {
+		return fmt.Errorf("failed to get TokenRouter instance: %w", err)
+	}
+
+	// copy from https://build.avax.network/docs/cross-chain/teleporter/addresses
+	tpMessengerAddressC := common.HexToAddress("0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf")
+	tpRegistryAddressC := common.HexToAddress("0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228")
 	// Deploy ERC20 token
 	_, erc20Tx, erc20Token, err := erc20mintburntoken.DeployERC20MintBurnToken(
 		authC,
@@ -181,11 +205,6 @@ func DeploySubnetContracts(
 		return fmt.Errorf("failed waiting for SetHomeAddress tx: %w", err)
 	}
 	log.Info("Set home address in ERC20 token")
-
-	// remoteToken, err := erc20tokenremoteupgradeable.NewERC20TokenRemoteUpgradeable(remoteTokenAddr, clientLnd)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get ERC20TokenRemoteUpgradeable instance: %w", err)
-	// }
 
 	// Init token remote
 	tokenHomeBlockchainID, err := getBlockchainID(baseURL, "C-Chain")
@@ -270,6 +289,8 @@ func DeploySubnetContracts(
 	if err := setupTokenRouter(ctx, &clientLnd, authLnd, tokenRouter, tokenAddr, homeAddr, remoteTokenAddr, log); err != nil {
 		return fmt.Errorf("failed to setup token router: %w", err)
 	}
+
+	return nil
 
 	// Deploy ReceiverOnSubnet contract
 	receiverAddr, err := deployTestReceiver(ctx, authC, clientC)
