@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = internal.DeploySubnetContracts(log, []string{"http://147.28.163.24:9650/ext/bc/2WPxMiCmphE2XgVLvVXQvZY6PpPoWJRWe6ELfevD3Z5cZ6zjgU/rpc"}, ibcAddr)
+	err = internal.DeploySubnetContracts(log, []string{"http://167.71.94.136:9650/ext/bc/2ZNTQEbhXfuvFqrZEas2YKVicANd3Q53aKnFzuVNTFkHtyxFzi/rpc"}, ibcAddr)
 	if err != nil {
 		log.Fatal("fatal error", zap.Error(err))
 	}
