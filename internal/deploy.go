@@ -127,7 +127,7 @@ func DeploySubnetContracts(
 	// log.Info("Teleporter contracts deployed to C-chain", zap.String("messenger", tpMessengerAddressC.Hex()), zap.String("registry", tpRegistryAddressC.Hex()))
 
 	tpMessengerAddressLnd := common.HexToAddress("0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf")
-	tpRegistryAddressLnd := common.HexToAddress("0x75F248db34c1c309Ff695600F4dC1c44D9cAf371")
+	tpRegistryAddressLnd := common.HexToAddress("0x7c604e63F3Faa40be4A91fA984788753CD2A699B")
 
 	// routerAddr := common.HexToAddress("0x466B832314df73124a5A20dBCBa71af5D4a2907D")
 	// transferAddr := common.HexToAddress("0xB3bD638076381b7871306f489d43FEf58de1ba71")
