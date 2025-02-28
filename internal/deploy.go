@@ -340,14 +340,14 @@ func setupTransferApp(
 	log logging.Logger,
 ) error {
 	// Set escrow address for channel-0
-	tx1, err := app.SetChannelEscrowAddresses(auth, "channel-0", auth.From)
-	if err != nil {
-		return err
-	}
-	if _, err := bind.WaitMined(ctx, *client, tx1); err != nil {
-		return err
-	}
-	log.Info("Set channel escrow address")
+	// tx1, err := app.SetChannelEscrowAddresses(auth, "channel-0", auth.From)
+	// if err != nil {
+	// 	return err
+	// }
+	// if _, err := bind.WaitMined(ctx, *client, tx1); err != nil {
+	// 	return err
+	// }
+	// log.Info("Set channel escrow address")
 
 	// Bind transfer port
 	tx2, err := app.BindPort(auth, ibcAddr, "transfer")
