@@ -186,7 +186,7 @@ func DeploySubnetContracts(
 		tpMessengerAddressC, // teleporter manager
 		big.NewInt(1),       // min teleporter version
 		tokenAddr,           // token address
-		18,                  // token decimals
+		6,                   // token decimals
 	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize ERC20TokenHomeUpgradeable: %w", err)
@@ -228,7 +228,7 @@ func DeploySubnetContracts(
 		settings,
 		erc20tokenName,   // name
 		erc20tokenSymbol, // symbol
-		uint8(18),        // decimals
+		uint8(6),        // decimals
 		routerAddr,       // tokenRouterChannelReader address
 		transferAddr,     // ibcBaseFungibleApp address
 		transferAddr,     // transferrer address (ibcBaseFungibleApp)
@@ -332,7 +332,7 @@ func setupTokenRouter(
 		remoteAddr,                 // remote
 		homeAddr,                   // home
 		"channel-0",                // IBC channel
-		18,                         // decimals
+		6,                         // decimals
 		false,                      // isNative
 		true,                       // isExternal
 	)
