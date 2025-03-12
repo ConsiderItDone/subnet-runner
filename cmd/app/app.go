@@ -37,6 +37,7 @@ const (
 	FlagHashName            = "hash"
 	FlagRouterAddressName   = "router"
 	FlagHomeAddressName     = "home"
+	FlagChannelName         = "channel"
 	FlagRemoteAddressName   = "remote"
 	FlagCosmosChainIDName   = "cosmos-bc-id"
 	FlagCosmosRecipientName = "cosmos-recipient"
@@ -53,6 +54,7 @@ const (
 	defaultCosmosChainID      = "ibc-1"
 	defaultCosmosRecipient    = ""
 	defaultAmount             = "1000000"
+	defaultChannelID          = "0"
 )
 
 // getClient returns an instance of the ethclient.Client
@@ -141,6 +143,68 @@ func sendDirectTransferCosmos(
 	}
 
 	fmt.Printf("Transfer called: tx=%s, receipt=%d\n", tx.Hash().Hex(), receipt.Status)
+	return nil
+}
+
+func updateTokenConfig(
+	c *cli.Context,
+) error {
+	client, err := getClient(c.String(FlagBlockchainIDName))
+	if err != nil {
+		return err
+	}
+
+	pkey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	chainID, err := client.ChainID(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pkey, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %w", err)
+	}
+
+	tokenRouterAddress := common.HexToAddress(c.String(FlagRouterAddressName))
+	tokenRouter, err := tokenrouter.NewTokenRouter(tokenRouterAddress, client)
+	if err != nil {
+		return fmt.Errorf("failed to create token router instance: %w", err)
+	}
+
+	channelID := fmt.Sprintf("channel-%s", c.String(FlagChannelName))
+
+	denom := "transfer/channel-1/stake"
+
+	// Configure wrapped native token
+	tx, err := tokenRouter.SetTokenConfig(
+		auth,
+		denom, // denom
+		common.HexToAddress(c.String(FlagErc20ContractName)), // token address
+		common.HexToAddress(c.String(FlagRemoteAddressName)), // remote
+		common.HexToAddress(c.String(FlagHomeAddressName)),   // home
+		channelID, // IBC channel
+		6,         // decimals
+		false,     // isNative
+		true,      // isExternal
+	)
+	if err != nil {
+		return err
+	}
+	if _, err := bind.WaitMined(context.Background(), client, tx); err != nil {
+		return err
+	}
+	fmt.Println("Token config updated")
+
+	tokenConfig, err := tokenRouter.GetTokenConfig(nil, denom)
+	if err != nil {
+		return fmt.Errorf("failed to get token config: %w", err)
+	}
+	fmt.Printf("Token Config: %+v\n", tokenConfig)
+
 	return nil
 }
 
@@ -697,7 +761,7 @@ func sendToCosmos(c *cli.Context) error {
 		PrimaryFeeTokenAddress:             common.Address{},
 		PrimaryFee:                         big.NewInt(0),
 		SecondaryFee:                       big.NewInt(0),
-		RequiredGasLimit:                   big.NewInt(1000000),
+		RequiredGasLimit:                   big.NewInt(3000000),
 		MultiHopFallback:                   common.Address{},
 	}
 
@@ -818,7 +882,7 @@ func main() {
 		Name:  FlagShowLogsAddrName,
 		Value: showLogsAddr,
 	}
-	FlagContr := cli.StringFlag{
+	FlagERC20 := cli.StringFlag{
 		Name:  FlagErc20ContractName,
 		Value: erc20Contract,
 	}
@@ -843,6 +907,10 @@ func main() {
 		Name:  FlagTokensAmountName,
 		Value: defaultAmount,
 	}
+	FlagChannelID := cli.StringFlag{
+		Name:  FlagChannelName,
+		Value: defaultChannelID,
+	}
 
 	app := cli.NewApp()
 	app.Name = "app"
@@ -851,7 +919,7 @@ func main() {
 		FlagBlockchainID,
 		FlagTransferApp,
 		FlagAddr,
-		FlagContr,
+		FlagERC20,
 		FlagHash,
 		FlagRouterAddress,
 		FlagRemoteAddress,
@@ -860,6 +928,7 @@ func main() {
 		FlagCosmosChainID,
 		FlagCosmosRecipient,
 		FlagTokensAmount,
+		FlagChannelID,
 	}
 
 	app.Commands = []cli.Command{
@@ -878,7 +947,7 @@ func main() {
 			Action:    balanceNative,
 		},
 		{
-			Flags:     []cli.Flag{FlagBlockchainID, FlagAddr, FlagContr},
+			Flags:     []cli.Flag{FlagBlockchainID, FlagAddr, FlagERC20},
 			Name:      "balance-erc20",
 			Usage:     "Show the balance of the ERC20 token",
 			ShortName: "e",
@@ -946,6 +1015,14 @@ func main() {
 			ShortName: "sr",
 			Usage:     "Send tokens to Cosmos",
 			Action:    showAllLogsTokenRemote,
+		},
+		{
+			Flags: []cli.Flag{FlagBlockchainID, FlagRemoteAddress, FlagHomeAddress, FlagRouterAddress,
+				FlagERC20, FlagChannelID},
+			Name:      "update-token-config",
+			ShortName: "utc",
+			Usage:     "Update token configuration",
+			Action:    updateTokenConfig,
 		},
 	}
 
