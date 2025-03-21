@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/network"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -285,103 +284,107 @@ func doTx(log logging.Logger, urls []string) error {
 
 func run(log logging.Logger, binaryPath string, workDir string) error {
 	// Create the network
-	nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath), 99999)
-	if err != nil {
-		return err
-	}
-
-	nwConfig.Flags["log-level"] = "INFO"
-
-	nw, err := local.NewNetwork(
-		log,
-		nwConfig,
-		workDir,
-		"",
-		workDir,
-		true,
-		false,
-		true,
-		pk,
-	)
-	if err != nil {
-		return err
-	}
-	defer func() { // Stop the network when this function returns
-		if err := nw.Stop(context.Background()); err != nil {
-			log.Info("error stopping network", zap.Error(err))
-		}
-	}()
+	// nwConfig, err := local.NewDefaultConfig(fmt.Sprintf("%s/avalanchego", binaryPath), 99999)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// nwConfig.Flags["log-level"] = "INFO"
+	//
+	// nw, err := local.NewNetwork(
+	// 	log,
+	// 	nwConfig,
+	// 	workDir,
+	// 	"",
+	// 	workDir,
+	// 	true,
+	// 	false,
+	// 	true,
+	// 	pk,
+	// )
+	// if err != nil {
+	// 	return err
+	// }
+	// defer func() { // Stop the network when this function returns
+	// 	if err := nw.Stop(context.Background()); err != nil {
+	// 		log.Info("error stopping network", zap.Error(err))
+	// 	}
+	// }()
 
 	// When we get a SIGINT or SIGTERM, stop the network and close [closedOnShutdownCh]
 	signalsChan := make(chan os.Signal, 1)
 	signal.Notify(signalsChan, syscall.SIGINT)
 	signal.Notify(signalsChan, syscall.SIGTERM)
 	closedOnShutdownCh := make(chan struct{})
-	go func() {
-		shutdownOnSignal(log, nw, signalsChan, closedOnShutdownCh)
-	}()
+	// go func() {
+	// 	shutdownOnSignal(log, nw, signalsChan, closedOnShutdownCh)
+	// }()
 
-	// Wait until the nodes in the network are ready
-	if err := await(nw, log, healthyTimeout); err != nil {
-		return err
-	}
-
-	// Add some chain
-	nodeNames, err := nw.GetNodeNames()
-	if err != nil {
-		return err
-	}
-
-	for i := range nodeNames {
-		node, err := nw.GetNode(nodeNames[i])
-		if err != nil {
-			return err
-		}
-		if _, err := copy(
-			fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", binaryPath),
-			fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", node.GetDataDir()),
-		); err != nil {
-			return err
-		}
-	}
-
-	chains, err := nw.CreateBlockchains(context.Background(), []network.BlockchainSpec{
-		{
-			VMName:      "subnetevm",
-			Genesis:     genesis,
-			ChainConfig: []byte(`{"warp-api-enabled": true}`),
-			// for enabling debug-tracer use this chain configuration, set the key "pruning-enabled": false
-			// ChainConfig: []byte(`{
-			// "warp-api-enabled": true,
-			// "eth-apis": ["eth", "eth-filter", "net", "web3", "internal-eth", "internal-blockchain",  "internal-transaction", "internal-account", "debug", "debug-tracer"],
-			// "pruning-enabled": false
-			// }`),
-			SubnetSpec: &network.SubnetSpec{
-				SubnetConfig: nil,
-				Participants: nodeNames,
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Wait until the nodes in the network are ready
-	if err := await(nw, log, healthyTimeout); err != nil {
-		return err
-	}
-
-	rpcUrls := make([]string, len(nodeNames))
-	for i := range nodeNames {
-		node, err := nw.GetNode(nodeNames[i])
-		if err != nil {
-			return err
-		}
-		rpcUrls[i] = fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0])
-		log.Info("subnet rpc url", zap.String("node", nodeNames[i]), zap.String("url", rpcUrls[i]))
-	}
+	// // Wait until the nodes in the network are ready
+	// if err := await(nw, log, healthyTimeout); err != nil {
+	// 	return err
+	// }
+	//
+	// // Add some chain
+	// nodeNames, err := nw.GetNodeNames()
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// for i := range nodeNames {
+	// 	node, err := nw.GetNode(nodeNames[i])
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if _, err := copy(
+	// 		fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", binaryPath),
+	// 		fmt.Sprintf("%s/plugins/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy", node.GetDataDir()),
+	// 	); err != nil {
+	// 		return err
+	// 	}
+	// }
+	//
+	// chains, err := nw.CreateBlockchains(context.Background(), []network.BlockchainSpec{
+	// 	{
+	// 		VMName:      "subnetevm",
+	// 		Genesis:     genesis,
+	// 		ChainConfig: []byte(`{"warp-api-enabled": true}`),
+	// 		// for enabling debug-tracer use this chain configuration, set the key "pruning-enabled": false
+	// 		// ChainConfig: []byte(`{
+	// 		// "warp-api-enabled": true,
+	// 		// "eth-apis": ["eth", "eth-filter", "net", "web3", "internal-eth", "internal-blockchain",  "internal-transaction", "internal-account", "debug", "debug-tracer"],
+	// 		// "pruning-enabled": false
+	// 		// }`),
+	// 		SubnetSpec: &network.SubnetSpec{
+	// 			SubnetConfig: nil,
+	// 			Participants: nodeNames,
+	// 		},
+	// 	},
+	// })
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// // Wait until the nodes in the network are ready
+	// if err := await(nw, log, healthyTimeout); err != nil {
+	// 	return err
+	// }
+	//
+	// rpcUrls := make([]string, len(nodeNames))
+	// for i := range nodeNames {
+	// 	node, err := nw.GetNode(nodeNames[i])
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	rpcUrls[i] = fmt.Sprintf("http://127.0.0.1:%d/ext/bc/%s/rpc", node.GetAPIPort(), chains[0])
+	// 	log.Info("subnet rpc url", zap.String("node", nodeNames[i]), zap.String("url", rpcUrls[i]))
+	// }
 
 	log.Info("Network will run until you CTRL + C to exit...")
+
+	rpcUrls := []string{
+		"http://127.0.0.1:9650/ext/bc/CrTKjcB3qYa9a951eCx7bgpr5PMD2xgGwnrHzJgjWkA6maca4/rpc",
+	}
 
 	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
 		log.Error("DeploySubnetContracts", zap.Error(err))

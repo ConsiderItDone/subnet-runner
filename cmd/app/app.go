@@ -177,7 +177,7 @@ func updateTokenConfig(
 
 	channelID := fmt.Sprintf("channel-%s", c.String(FlagChannelName))
 
-	denom := "transfer/channel-1/stake"
+	denom := "transfer/channel-0/stake"
 
 	// Configure wrapped native token
 	tx, err := tokenRouter.SetTokenConfig(
