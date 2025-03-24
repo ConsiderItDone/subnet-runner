@@ -383,7 +383,7 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	log.Info("Network will run until you CTRL + C to exit...")
 
 	rpcUrls := []string{
-		"http://127.0.0.1:9650/ext/bc/CrTKjcB3qYa9a951eCx7bgpr5PMD2xgGwnrHzJgjWkA6maca4/rpc",
+		"http://127.0.0.1:9650/ext/bc/2hBq38FX42AgKPUbnHCQZ6BaKFFxjzrTTCjbjV2paDLeFmoTQe/rpc",
 	}
 
 	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
