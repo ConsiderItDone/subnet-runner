@@ -1,18 +1,30 @@
 {
-  "clientStates": [
+  "precompileUpgrades": [
     {
-      "client_id": "14-avalanche-0",
-      "client_state": {
-        "trusting_period": "18000000s",
-        "max_clock_drift": "600s",
-        "frozen_height": {
-          "revision_number": "0",
-          "revision_height": "0"
-        },
-        "latest_height": {
-          "revision_number": "0",
-          "revision_height": "155"
-        }
+      "ibcConfig": {
+        "blockTimestamp": 19,
+        "disable": true
+      }
+    },
+    {
+      "ibcConfig": {
+        "blockTimestamp": 20,
+        "disable": false,
+        "clientStates": [
+          {
+            "client_id": "14-avalanche-0",
+            "trusting_period": 18000000000000000,
+            "max_clock_drift": 600000000000,
+            "frozen_height": {
+              "revisionNumber": 0,
+              "revisionHeight": 0
+            },
+            "latest_height": {
+              "revisionNumber": 0,
+              "revisionHeight": 700
+            }
+          }
+        ]
       }
     }
   ]
