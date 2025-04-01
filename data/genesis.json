@@ -32,7 +32,9 @@
       ]
     },
     "ibcConfig": {
-      "blockTimestamp": 0
+      "blockTimestamp": 0,
+      "disable": false,
+      "clientStates": []
     },
     "rewardManagerConfig": {
       "blockTimestamp": 0,

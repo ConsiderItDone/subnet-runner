@@ -2,13 +2,13 @@
   "precompileUpgrades": [
     {
       "ibcConfig": {
-        "blockTimestamp": 19,
+        "blockTimestamp": 1711756800,
         "disable": true
       }
     },
     {
       "ibcConfig": {
-        "blockTimestamp": 20,
+        "blockTimestamp": 1711756801,
         "disable": false,
         "clientStates": [
           {

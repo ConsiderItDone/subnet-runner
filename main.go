@@ -23,7 +23,6 @@ import (
 
 	"subnet-runner/contracts/ics20/ics20bank"
 	"subnet-runner/contracts/ics20/ics20transferer"
-	"subnet-runner/internal"
 )
 
 const (
@@ -315,9 +314,9 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	signalsChan := make(chan os.Signal, 1)
 	signal.Notify(signalsChan, syscall.SIGINT)
 	signal.Notify(signalsChan, syscall.SIGTERM)
-	closedOnShutdownCh := make(chan struct{})
+	// closedOnShutdownCh := make(chan struct{})
 	// go func() {
-	// 	shutdownOnSignal(log, nw, signalsChan, closedOnShutdownCh)
+	// 	shutdownOnSignal(log, nil, signalsChan, closedOnShutdownCh)
 	// }()
 
 	// // Wait until the nodes in the network are ready
@@ -383,17 +382,17 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 	log.Info("Network will run until you CTRL + C to exit...")
 
 	rpcUrls := []string{
-		"http://127.0.0.1:9650/ext/bc/2hBq38FX42AgKPUbnHCQZ6BaKFFxjzrTTCjbjV2paDLeFmoTQe/rpc",
+		"http://127.0.0.1:9650/ext/bc/Un9bytg1dR89Lgd38VarEGSGuK16wnQFkzVnUMreoHSyuQnXD/rpc",
 	}
 
-	if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
-		log.Error("DeploySubnetContracts", zap.Error(err))
-		return err
-	}
+	// if err := internal.DeploySubnetContracts(log, rpcUrls, ibcAddr); err != nil {
+	// 	log.Error("DeploySubnetContracts", zap.Error(err))
+	// 	return err
+	// }
 
 	for {
 		select {
-		case <-closedOnShutdownCh:
+		case <-signalsChan:
 			return nil
 		case <-time.After(5 * time.Second):
 			if err := doTx(log, rpcUrls); err != nil {
