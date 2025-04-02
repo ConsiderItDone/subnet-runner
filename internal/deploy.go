@@ -19,38 +19,41 @@ import (
 	erc20tokenremoteupgradeable "subnet-runner/abi-bindings/go/ictt/TokenRemote/ERC20TokenRemoteUpgradeable"
 )
 
-const (
-	pk               = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
-	pkAwm            = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	AwmAddress       = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-	erc20tokenName   = "Landslide"
-	erc20tokenSymbol = "transfer/channel-0/stake"
-)
+type DeployRequest struct {
+	Url                      string // subnet RPC URL
+	Pk                       string
+	TpMessengerAddressSubnet string
+	TpRegistryAddressSubnet  string
+	TpMessengerAddressC      string
+	TpRegistryAddressC       string
+	TokenName                string // "Landslide"
+	TokenSymbol              string // "transfer/channel-0/stake"
+}
 
 // DeploySubnetContracts deploys contracts to the subnet and C-chain and sets up the relayer config
 func DeploySubnetContracts(
 	log logging.Logger,
-	urls []string,
 	ibcAddr common.Address,
+	req DeployRequest,
 ) error {
 	ctx := context.Background()
 
-	baseURL, err := parseBaseURL(urls[0])
+	baseURL, err := parseBaseURL(req.Url)
 	if err != nil {
 		return err
 	}
 
-	pkey, err := crypto.HexToECDSA(pk)
+	pkey, err := crypto.HexToECDSA(req.Pk)
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	clientLnd, _, authLnd, _, err := initializeClientAndAuth(urls[0], ctx, pkey)
+	clientLnd, _, authLnd, _, err := initializeClientAndAuth(req.Url, ctx, pkey)
 	if err != nil {
 		return err
 	}
 
-	clientLnd, _, authLnd, rpcClientLnd, err := initializeClientAndAuth(urls[0], ctx, pkey)
+	clientLnd, _, authLnd, rpcClientLnd, err := initializeClientAndAuth(req.Url, ctx, pkey)
 	if err != nil {
 		return err
 	}
@@ -126,8 +129,8 @@ func DeploySubnetContracts(
 	// }
 	// log.Info("Teleporter contracts deployed to C-chain", zap.String("messenger", tpMessengerAddressC.Hex()), zap.String("registry", tpRegistryAddressC.Hex()))
 
-	tpMessengerAddressLnd := common.HexToAddress("0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf")
-	tpRegistryAddressLnd := common.HexToAddress("0x7c604e63F3Faa40be4A91fA984788753CD2A699B")
+	tpMessengerAddressLnd := common.HexToAddress(req.TpMessengerAddressSubnet)
+	tpRegistryAddressLnd := common.HexToAddress(req.TpRegistryAddressSubnet)
 
 	// routerAddr := common.HexToAddress("0x466B832314df73124a5A20dBCBa71af5D4a2907D")
 	// transferAddr := common.HexToAddress("0xB3bD638076381b7871306f489d43FEf58de1ba71")
@@ -144,16 +147,16 @@ func DeploySubnetContracts(
 	}
 
 	// copy from https://build.avax.network/docs/cross-chain/teleporter/addresses
-	tpMessengerAddressC := common.HexToAddress("0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf")
-	tpRegistryAddressC := common.HexToAddress("0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228")
+	tpMessengerAddressC := common.HexToAddress(req.TpMessengerAddressC)
+	tpRegistryAddressC := common.HexToAddress(req.TpRegistryAddressC)
 	// Deploy ERC20 token
 	_, erc20Tx, erc20Token, err := erc20mintburntoken.DeployERC20MintBurnToken(
 		authC,
 		clientC,
-		erc20tokenName,   // name
-		erc20tokenSymbol, // symbol
-		18,               // decimals
-		authC.From,       // initial owner
+		req.TokenName,   // name
+		req.TokenSymbol, // symbol
+		18,              // decimals
+		authC.From,      // initial owner
 	)
 	if err != nil {
 		return fmt.Errorf("failed to deploy ERC20MintBurnToken: %w", err)
@@ -226,12 +229,12 @@ func DeploySubnetContracts(
 	tx, err = remoteToken.Initialize(
 		authLnd,
 		settings,
-		erc20tokenName,   // name
-		erc20tokenSymbol, // symbol
-		uint8(6),         // decimals
-		routerAddr,       // tokenRouterChannelReader address
-		transferAddr,     // ibcBaseFungibleApp address
-		transferAddr,     // transferrer address (ibcBaseFungibleApp)
+		req.TokenName,   // name
+		req.TokenSymbol, // symbol
+		uint8(6),        // decimals
+		routerAddr,      // tokenRouterChannelReader address
+		transferAddr,    // ibcBaseFungibleApp address
+		transferAddr,    // transferrer address (ibcBaseFungibleApp)
 	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize ERC20TokenRemoteUpgradeable: %w", err)
@@ -247,16 +250,16 @@ func DeploySubnetContracts(
 	if err != nil {
 		return fmt.Errorf("failed to get token name after initialization: %w", err)
 	}
-	if tokenName != erc20tokenName {
-		return fmt.Errorf("unexpected token name after initialization: got %s, want %s", tokenName, erc20tokenName)
+	if tokenName != req.TokenName {
+		return fmt.Errorf("unexpected token name after initialization: got %s, want %s", tokenName, req.TokenName)
 	}
 
 	tokenSymbol, err := remoteToken.Symbol(&bind.CallOpts{})
 	if err != nil {
 		return fmt.Errorf("failed to get token symbol after initialization: %w", err)
 	}
-	if tokenSymbol != erc20tokenSymbol {
-		return fmt.Errorf("unexpected token symbol after initialization: got %s, want %s", tokenSymbol, erc20tokenSymbol)
+	if tokenSymbol != req.TokenSymbol {
+		return fmt.Errorf("unexpected token symbol after initialization: got %s, want %s", tokenSymbol, req.TokenSymbol)
 	}
 
 	tokenDecimals, err := remoteToken.Decimals(&bind.CallOpts{})
@@ -287,7 +290,17 @@ func DeploySubnetContracts(
 	log.Info("Successfully verified ERC20TokenRemoteUpgradeable initialization")
 
 	// Setup TokenRouter configuration
-	if err := setupTokenRouter(ctx, &clientLnd, authLnd, tokenRouter, tokenAddr, homeAddr, remoteTokenAddr, log); err != nil {
+	if err := setupTokenRouter(
+		ctx,
+		&clientLnd,
+		authLnd,
+		tokenRouter,
+		tokenAddr,
+		homeAddr,
+		remoteTokenAddr,
+		req.TokenSymbol,
+		log,
+	); err != nil {
 		return fmt.Errorf("failed to setup token router: %w", err)
 	}
 
@@ -322,19 +335,20 @@ func setupTokenRouter(
 	tokenAddr common.Address,
 	homeAddr common.Address,
 	remoteAddr common.Address,
+	denom string,
 	log logging.Logger,
 ) error {
 	// Configure wrapped native token
 	tx, err := router.SetTokenConfig(
 		auth,
-		"transfer/channel-0/stake", // denom
-		tokenAddr,                  // token address
-		remoteAddr,                 // remote
-		homeAddr,                   // home
-		"channel-0",                // IBC channel
-		6,                          // decimals
-		false,                      // isNative
-		true,                       // isExternal
+		denom,       // denom
+		tokenAddr,   // token address
+		remoteAddr,  // remote
+		homeAddr,    // home
+		"channel-0", // IBC channel
+		6,           // decimals
+		false,       // isNative
+		true,        // isExternal
 	)
 	if err != nil {
 		return err
