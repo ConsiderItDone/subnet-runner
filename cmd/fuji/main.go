@@ -30,14 +30,14 @@ func main() {
 	}
 
 	req := internal.DeployRequest{
-		Url:                      "http://167.71.94.136:9650/ext/bc/2ZNTQEbhXfuvFqrZEas2YKVicANd3Q53aKnFzuVNTFkHtyxFzi/rpc",
+		Url:                      "http://167.71.94.136:9650/ext/bc/38PyVXANqPSnv7WwjQxAJRWWiU3jExYCB98aiabRAoo2WvmBS/rpc",
 		Pk:                       "deployment-pk-here",
 		TpMessengerAddressSubnet: "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf",
-		TpRegistryAddressSubnet:  "0x7c604e63F3Faa40be4A91fA984788753CD2A699B",
+		TpRegistryAddressSubnet:  "0x49DBC1642e69B72224B3B2072025E135da0ca495",
 		TpMessengerAddressC:      "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf",
 		TpRegistryAddressC:       "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228",
-		TokenName:                "Landslide",
-		TokenSymbol:              "transfer/channel-0/stake",
+		TokenName:                "urwife",
+		TokenSymbol:              "transfer/channel-0/urwife",
 	}
 
 	err = internal.DeploySubnetContracts(log, ibcAddr, req)
