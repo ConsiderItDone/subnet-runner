@@ -41,6 +41,9 @@
       "adminAddresses": [
         "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
       ]
+    },
+    "md5Config": {
+      "blockTimestamp": 0
     }
   },
   "alloc": {
