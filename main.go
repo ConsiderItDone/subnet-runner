@@ -388,14 +388,6 @@ func run(log logging.Logger, binaryPath string, workDir string) error {
 		return err
 	}
 
-	for {
-		select {
-		case <-closedOnShutdownCh:
-			return nil
-		case <-time.After(5 * time.Second):
-			if err := doTx(log, rpcUrls); err != nil {
-				return err
-			}
-		}
-	}
+	<-closedOnShutdownCh
+	return nil
 }
